@@ -20,7 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.shiwa.onearun.data.remote.MqttConnectionState
 
@@ -28,20 +27,19 @@ import com.shiwa.onearun.data.remote.MqttConnectionState
 fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = HomeViewModel(),
-    onStartRaceNavigate: () -> Unit = {},
-    onEnterRaceNavigate: () -> Unit = {}
+    onCreateRaceNavigate: () -> Unit = {},
+    onJoinRaceNavigate: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
     HomeScreenContent(
         uiState = uiState,
-        onStartRaceClick = {
-            viewModel.onStartRaceClick()
-            onStartRaceNavigate()
+        onCreateClick = {
+            viewModel.createRace()
+            onCreateRaceNavigate()
         },
-        onEnterRaceClick = {
-            viewModel.onEnterRaceClick()
-            onEnterRaceNavigate()
+        onJoinClick = {
+            viewModel.joinRace()
+            onJoinRaceNavigate()
         },
         onPublishClick = {
             viewModel.onPublishHelloClick()
@@ -64,8 +62,8 @@ fun HomeScreenTopBar() {
 @Composable
 fun HomeScreenContent(
     uiState: HomeUiState,
-    onStartRaceClick: () -> Unit,
-    onEnterRaceClick: () -> Unit,
+    onCreateClick: () -> Unit,
+    onJoinClick: () -> Unit,
     onPublishClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -101,11 +99,11 @@ fun HomeScreenContent(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            StartRaceButton(onClick = onStartRaceClick)
+            CreateRaceButton(onClick = onCreateClick)
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            EnterRaceButton(onClick = onEnterRaceClick)
+            JoinRaceButton(onClick = onJoinClick)
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -120,34 +118,23 @@ fun HomeScreenContent(
 }
 
 @Composable
-fun EnterRaceButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun JoinRaceButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Button(
         onClick = onClick,
         shape = RoundedCornerShape(4.dp),
         modifier = modifier
     ) {
-        Text(text = "Enter Race")
+        Text(text = "Join a Race")
     }
 }
 
 @Composable
-fun StartRaceButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun CreateRaceButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Button(
         onClick = onClick,
         shape = RoundedCornerShape(4.dp),
         modifier = modifier
     ) {
-        Text(text = "Start Race")
+        Text(text = "Create a Race")
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    HomeScreenContent(
-        uiState = HomeUiState(statusMessage = "Connected to HiveMQ Broker"),
-        onStartRaceClick = {},
-        onEnterRaceClick = {},
-        onPublishClick = {}
-    )
 }

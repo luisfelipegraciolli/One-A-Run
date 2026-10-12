@@ -38,8 +38,8 @@ class HomeViewModel(
         viewModelScope.launch {
             repository.connectionState.collect { state ->
                 val statusText = when (state) {
-                    MqttConnectionState.Connected -> "Connected to HiveMQ Broker"
-                    MqttConnectionState.Connecting -> "Connecting to HiveMQ Broker..."
+                    MqttConnectionState.Connected -> "Connected to Mosquitto Broker"
+                    MqttConnectionState.Connecting -> "Connecting to Mosquitto Broker..."
                     MqttConnectionState.Disconnected -> "Disconnected"
                     is MqttConnectionState.Error -> "Error: ${state.message}"
                 }
@@ -74,14 +74,14 @@ class HomeViewModel(
         }
     }
 
-    fun onEnterRaceClick() {
+    fun joinRace() {
         _uiState.update { it.copy(success = true) }
-        onPublishHelloClick("Entering race...")
+        onPublishHelloClick("Joining a race...")
     }
 
-    fun onStartRaceClick() {
+    fun createRace() {
         _uiState.update { it.copy(success = true) }
-        onPublishHelloClick("Starting race...")
+        onPublishHelloClick("Creating a race...")
     }
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

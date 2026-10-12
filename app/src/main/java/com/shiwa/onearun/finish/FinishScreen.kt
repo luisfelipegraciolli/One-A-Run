@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun FinishScreen(
     modifier: Modifier = Modifier,
-    onNavigateHome: () -> Unit = {}
+    onNavigateHome: () -> Unit = {},
 ) {
     Scaffold { innerPadding ->
         Column(
