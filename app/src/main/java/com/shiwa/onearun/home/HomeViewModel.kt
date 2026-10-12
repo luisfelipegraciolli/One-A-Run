@@ -1,4 +1,4 @@
-package com.shiwa.onearun.ui.screens.viewmodel
+package com.shiwa.onearun.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

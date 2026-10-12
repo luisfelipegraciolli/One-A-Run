@@ -9,19 +9,20 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.shiwa.onearun.ui.screens.EndScreen
-import com.shiwa.onearun.ui.screens.HomeScreen
-import com.shiwa.onearun.ui.screens.LobbyScreen
-import com.shiwa.onearun.ui.screens.RunningScreen
-import com.shiwa.onearun.ui.screens.StartRaceScreen
-import com.shiwa.onearun.ui.screens.viewmodel.HomeViewModel
+import com.shiwa.onearun.createrace.CreateRaceScreen
+import com.shiwa.onearun.home.HomeScreen
+import com.shiwa.onearun.lobby.LobbyScreen
+import com.shiwa.onearun.home.HomeViewModel
+import com.shiwa.onearun.joinrace.JoinRaceScreen
+import com.shiwa.onearun.race.RaceScreen
+import com.shiwa.onearun.ui.screens.FinishScreen
 
 enum class AppScreen {
     Home,
     Lobby,
     Race,
-    EnterRace,
-    StartRace,
+    CreateRace,
+    JoinRace,
     End
 }
 
@@ -41,24 +42,24 @@ fun OneARunApp(
                 HomeScreen(
                     viewModel = homeViewModel,
                     onStartRaceNavigate = {
-                        navController.navigate(AppScreen.StartRace.name)
+                        navController.navigate(AppScreen.CreateRace.name)
                     },
                     onEnterRaceNavigate = {
-                        navController.navigate(AppScreen.EnterRace.name)
+                        navController.navigate(AppScreen.JoinRace.name)
                     }
                 )
             }
 
-            composable(route = AppScreen.StartRace.name) {
-                StartRaceScreen(
+            composable(route = AppScreen.CreateRace.name) {
+                CreateRaceScreen(
                     onNavigateBack = {
                         navController.popBackStack()
                     }
                 )
             }
 
-            composable(route = AppScreen.EnterRace.name) {
-                LobbyScreen(
+            composable(route = AppScreen.JoinRace.name) {
+                JoinRaceScreen(
                     onNavigateBack = {
                         navController.popBackStack()
                     }
@@ -74,7 +75,7 @@ fun OneARunApp(
             }
 
             composable(route = AppScreen.Race.name) {
-                RunningScreen(
+                RaceScreen(
                     onNavigateBack = {
                         navController.navigate(AppScreen.End.name)
                     }
@@ -82,7 +83,7 @@ fun OneARunApp(
             }
 
             composable(route = AppScreen.End.name) {
-                EndScreen(
+                FinishScreen(
                     onNavigateHome = {
                         navController.popBackStack(AppScreen.Home.name, inclusive = false)
                     }

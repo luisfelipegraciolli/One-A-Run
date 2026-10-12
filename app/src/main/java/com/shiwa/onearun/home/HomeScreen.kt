@@ -1,4 +1,4 @@
-package com.shiwa.onearun.ui.screens
+package com.shiwa.onearun.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,8 +23,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.shiwa.onearun.data.remote.MqttConnectionState
-import com.shiwa.onearun.ui.screens.viewmodel.HomeUiState
-import com.shiwa.onearun.ui.screens.viewmodel.HomeViewModel
 
 @Composable
 fun HomeScreen(

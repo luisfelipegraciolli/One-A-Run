@@ -1,4 +1,4 @@
-package com.shiwa.onearun.ui.screens
+package com.shiwa.onearun.race
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun TimerScreen(
+fun RaceScreen(
     modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit = {}
 ) {
@@ -28,7 +28,7 @@ fun TimerScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Timer Screen",
+                text = "Race Running Screen",
                 style = MaterialTheme.typography.headlineMedium
             )
 
@@ -36,7 +36,7 @@ fun TimerScreen(
                 onClick = onNavigateBack,
                 modifier = Modifier.padding(top = 16.dp)
             ) {
-                Text("Back")
+                Text("End Race")
             }
         }
     }

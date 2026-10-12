@@ -1,4 +1,4 @@
-package com.shiwa.onearun.ui.screens
+package com.shiwa.onearun.countdown
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,9 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun EndScreen(
+fun TimerScreen(
     modifier: Modifier = Modifier,
-    onNavigateHome: () -> Unit = {}
+    onNavigateBack: () -> Unit = {}
 ) {
     Scaffold { innerPadding ->
         Column(
@@ -28,15 +28,15 @@ fun EndScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Race Finished Screen",
+                text = "Timer Screen",
                 style = MaterialTheme.typography.headlineMedium
             )
 
             Button(
-                onClick = onNavigateHome,
+                onClick = onNavigateBack,
                 modifier = Modifier.padding(top = 16.dp)
             ) {
-                Text("Return to Home")
+                Text("Back")
             }
         }
     }

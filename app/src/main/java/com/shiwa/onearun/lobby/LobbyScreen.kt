@@ -1,4 +1,4 @@
-package com.shiwa.onearun.ui.screens
+package com.shiwa.onearun.lobby
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun StartRaceScreen(
+fun LobbyScreen(
     modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit = {}
 ) {
@@ -28,7 +28,7 @@ fun StartRaceScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Start Race Screen",
+                text = "Lobby Screen",
                 style = MaterialTheme.typography.headlineMedium
             )
 

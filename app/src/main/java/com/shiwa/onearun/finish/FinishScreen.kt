@@ -14,9 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun RunningScreen(
+fun FinishScreen(
     modifier: Modifier = Modifier,
-    onNavigateBack: () -> Unit = {}
+    onNavigateHome: () -> Unit = {}
 ) {
     Scaffold { innerPadding ->
         Column(
@@ -28,15 +28,15 @@ fun RunningScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Race Running Screen",
+                text = "Race Finished Screen",
                 style = MaterialTheme.typography.headlineMedium
             )
 
             Button(
-                onClick = onNavigateBack,
+                onClick = onNavigateHome,
                 modifier = Modifier.padding(top = 16.dp)
             ) {
-                Text("End Race")
+                Text("Return to Home")
             }
         }
     }
