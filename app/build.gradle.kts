@@ -68,6 +68,8 @@ dependencies {
     implementation(libs.androidx.navigation.runtime.ktx)
 
     implementation(libs.hivemq.mqtt.client)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
 
 
     testImplementation(libs.junit)
