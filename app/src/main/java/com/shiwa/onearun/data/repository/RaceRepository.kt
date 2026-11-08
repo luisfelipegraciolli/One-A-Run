@@ -40,10 +40,10 @@ interface RaceRepository {
     suspend fun createRaceApi(race: RaceDto): Result<RaceDto>
 
     // Retrofit API Methods (Novos Endpoints)
-    suspend fun createRaceSession(distanceInMeters: Int): Result<CreateRaceResponse>
+    suspend fun createRaceSession(hostRunnerName: String, distanceInMeters: Int): Result<CreateRaceResponse>
     suspend fun createRaceSession(request: CreateRaceRequest): Result<CreateRaceResponse>
     suspend fun getRaceSession(sessionId: String): Result<RaceDetailsResponse>
-    suspend fun joinRaceSession(joinCode: String): Result<JoinRaceResponse>
+    suspend fun joinRaceSession(guestRunnerName: String, joinCode: String): Result<JoinRaceResponse>
     suspend fun joinRaceSession(request: JoinRaceRequest): Result<JoinRaceResponse>
 
     companion object {
@@ -84,8 +84,11 @@ class RaceRepositoryImpl(
         }
     }
 
-    override suspend fun createRaceSession(distanceInMeters: Int): Result<CreateRaceResponse> {
-        return createRaceSession(CreateRaceRequest(distanceInMeters = distanceInMeters))
+    override suspend fun createRaceSession(hostRunnerName: String, distanceInMeters: Int): Result<CreateRaceResponse> {
+        return createRaceSession(CreateRaceRequest(
+            distanceInMeters = distanceInMeters,
+            hostRunnerName = hostRunnerName
+        ))
     }
 
     override suspend fun createRaceSession(request: CreateRaceRequest): Result<CreateRaceResponse> {
@@ -124,8 +127,11 @@ class RaceRepositoryImpl(
         }
     }
 
-    override suspend fun joinRaceSession(joinCode: String): Result<JoinRaceResponse> {
-        return joinRaceSession(JoinRaceRequest(joinCode = joinCode))
+    override suspend fun joinRaceSession(guestRunnerName: String, joinCode: String): Result<JoinRaceResponse> {
+        return joinRaceSession(JoinRaceRequest(
+            joinCode = joinCode,
+            guestRunnerName = guestRunnerName
+        ))
     }
 
     override suspend fun joinRaceSession(request: JoinRaceRequest): Result<JoinRaceResponse> {

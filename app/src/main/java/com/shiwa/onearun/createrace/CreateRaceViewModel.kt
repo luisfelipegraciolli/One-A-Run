@@ -44,7 +44,10 @@ class CreateRaceViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            val result = repository.createRaceSession(distanceInMeters = numericDistance)
+            val result = repository.createRaceSession(
+                distanceInMeters = numericDistance,
+                hostRunnerName = currentState.hostName
+            )
             if (result.isSuccess) {
                 val response = result.getOrNull()
                 val code = response?.joinCode ?: ""

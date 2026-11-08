@@ -6,6 +6,8 @@ import com.google.gson.annotations.SerializedName
  * Body enviado para criar uma corrida.
  */
 data class CreateRaceRequest(
+    @SerializedName("hostRunnerName")
+    val hostRunnerName: String,
     @SerializedName("distanceInMeters")
     val distanceInMeters: Int
 )
@@ -19,13 +21,17 @@ data class CreateRaceResponse(
     @SerializedName("joinCode")
     val joinCode: String,
     @SerializedName("runnerId")
-    val runnerId: String
+    val runnerId: String,
+    @SerializedName("hostRunnerName")
+    val hostRunnerName: String
 )
 
 /**
  * Body enviado para entrar em uma corrida existente.
  */
 data class JoinRaceRequest(
+    @SerializedName("guestRunnerName")
+    val guestRunnerName: String,
     @SerializedName("joinCode")
     val joinCode: String
 )
@@ -39,7 +45,9 @@ data class JoinRaceResponse(
     @SerializedName("guestRunnerId")
     val guestRunnerId: String,
     @SerializedName("distanceMeters")
-    val distanceMeters: Int
+    val distanceMeters: Int,
+    @SerializedName("guestRunnerName")
+    val guestRunnerName: String,
 )
 
 /**
@@ -62,10 +70,14 @@ data class RaceDetailsResponse(
     val joinCode: String,
     @SerializedName("distanceMeters")
     val distanceMeters: Int,
+    @SerializedName("hostRunnerName")
+    val hostRunnerName: String,
     @SerializedName("hostRunnerId")
     val hostRunnerId: String,
     @SerializedName("guestRunnerId")
     val guestRunnerId: String? = null,
+    @SerializedName("guestRunnerName")
+    val guestRunnerName: String,
     @SerializedName("status")
     val status: String,
     @SerializedName("createdAt")

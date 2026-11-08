@@ -31,7 +31,8 @@ class JoinRaceViewModel(
     fun joinRace(joinCode: String){
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val result = repository.joinRaceSession(joinCode)
+            // Mudar depois para o nome do usuário que ele digitar
+            val result = repository.joinRaceSession(guestRunnerName = "Guest", joinCode = joinCode)
             if (result.isSuccess) {
                 _uiState.update { it.copy(isLoading = false) }
             }

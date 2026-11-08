@@ -35,7 +35,7 @@ interface RaceApiService {
     suspend fun getRaceSession(@Path("sessionId") sessionId: String): RaceDetailsResponse
 
     /**
-     * Endpoint 2.3: Entrar em uma corrida existente
+     * Endpoint 2.3: Entrar numa corrida existente
      * POST /api/v1/race/join
      */
     @POST("api/v1/race/join")
