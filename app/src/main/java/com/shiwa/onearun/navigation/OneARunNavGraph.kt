@@ -12,10 +12,13 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.shiwa.onearun.countdown.CountdownScreen
 import com.shiwa.onearun.createrace.CreateRaceScreen
+import com.shiwa.onearun.createrace.CreateRaceViewModel
+import com.shiwa.onearun.createracewaiting.CreateRaceWaiting
 import com.shiwa.onearun.home.HomeScreen
 import com.shiwa.onearun.home.HomeViewModel
 import com.shiwa.onearun.joinrace.JoinRaceScreen
 import com.shiwa.onearun.lobby.LobbyScreen
+import com.shiwa.onearun.navigation.OneARunDestinationsArgs.DISTANCE_ARG
 import com.shiwa.onearun.navigation.OneARunDestinationsArgs.SESSION_CODE_ARG
 import com.shiwa.onearun.navigation.OneARunDestinationsArgs.USER_NAME_ARG
 import com.shiwa.onearun.race.RaceScreen
@@ -45,7 +48,38 @@ fun OneARunNavGraph(
         }
 
         composable(route = OneARunDestinations.CREATE_RACE_ROUTE) {
+            val viewModel: CreateRaceViewModel = viewModel(factory = CreateRaceViewModel.Factory)
             CreateRaceScreen(
+                viewModel = viewModel,
+                onNavigateToWaiting = { joinCode, hostName, distance ->
+                    navActions.navigateToCreateRaceWaiting(
+                        hostName = hostName,
+                        distance = distance,
+                        sessionCode = joinCode
+                    )
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = OneARunDestinations.CREATE_RACE_WAITING_ROUTE,
+            arguments = listOf(
+                navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType; defaultValue = "" },
+                navArgument(name = USER_NAME_ARG) { type = NavType.StringType; defaultValue = "" },
+                navArgument(name = DISTANCE_ARG) { type = NavType.StringType; defaultValue = "" }
+            )
+        ) { entry ->
+            val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG) ?: ""
+            val userName = entry.arguments?.getString(USER_NAME_ARG) ?: ""
+            val distance = entry.arguments?.getString(DISTANCE_ARG) ?: ""
+
+            CreateRaceWaiting(
+                hostName = userName.ifEmpty { "João" },
+                distance = distance.ifEmpty { "400m" },
+                joinCode = sessionCode.ifEmpty { "UX9BS" },
                 onNavigateBack = {
                     navController.popBackStack()
                 }
@@ -100,6 +134,7 @@ fun OneARunNavGraph(
                 }
             )
         }
+
         composable(
             route = OneARunDestinations.FINISH_ROUTE,
             arguments = listOf(

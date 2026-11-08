@@ -14,8 +14,8 @@ interface AppContainer {
 
 class DefaultAppContainer : AppContainer {
     // Esse é meu IP da rede local, caso queira testar o backend, use seu IP
-    //private val baseUrl = "http://192.168.1.20:8080/"
-    private val baseUrl = "http://192.168.1.20:8081/"
+    //private val baseUrl = "http://seu_ip:8080/"
+    private val baseUrl = "http://192.168.1.20:8080/"
 
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()

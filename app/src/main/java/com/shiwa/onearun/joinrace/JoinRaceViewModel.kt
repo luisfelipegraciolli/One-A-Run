@@ -21,8 +21,7 @@ data class JoinRaceUiState(
 )
 
 class JoinRaceViewModel(
-    private val repository: RaceRepository,
-    joinCode: String
+    private val repository: RaceRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(JoinRaceUiState())
@@ -44,7 +43,7 @@ class JoinRaceViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as OneARunApplication)
-                JoinRaceViewModel(repository = application.container.raceRepository, joinCode = "")
+                JoinRaceViewModel(repository = application.container.raceRepository)
             }
         }
     }
