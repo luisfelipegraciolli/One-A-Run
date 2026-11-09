@@ -1,140 +1,119 @@
 package com.shiwa.onearun.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.shiwa.onearun.data.remote.MqttConnectionState
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+
 
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    viewModel: HomeViewModel = HomeViewModel(),
+    viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
     onCreateRaceNavigate: () -> Unit = {},
     onJoinRaceNavigate: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
     HomeScreenContent(
-        uiState = uiState,
-        onCreateClick = {
-            viewModel.createRace()
-            onCreateRaceNavigate()
-        },
-        onJoinClick = {
-            viewModel.joinRace()
-            onJoinRaceNavigate()
-        },
-        onPublishClick = {
-            viewModel.onPublishHelloClick()
-        },
+        onCreateClick = onCreateRaceNavigate,
+        onJoinClick = onJoinRaceNavigate,
         modifier = modifier
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeScreenTopBar() {
-    CenterAlignedTopAppBar(
-        title = {
-            Text(text = "One A Run")
-        },
-        modifier = Modifier.clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
     )
 }
 
 @Composable
 fun HomeScreenContent(
-    uiState: HomeUiState,
     onCreateClick: () -> Unit,
     onJoinClick: () -> Unit,
-    onPublishClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        topBar = { HomeScreenTopBar() }
-    ) { innerPadding ->
+    Scaffold(modifier = modifier) { innerPadding ->
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center // Alinha o conteúdo verticalmente no centro
         ) {
+            // Título Principal
             Text(
-                text = uiState.statusMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                color = when (uiState.connectionState) {
-                    MqttConnectionState.Connected -> MaterialTheme.colorScheme.primary
-                    is MqttConnectionState.Error -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                text = "ONE A RUN",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = 32.sp
+                ),
+                modifier = Modifier.padding(bottom = 48.dp)
             )
 
-            uiState.lastReceivedMessage?.let { msg ->
-                Spacer(modifier = Modifier.height(8.dp))
+            // Botão "Criar uma corrida"
+            Button(
+                onClick = onCreateClick,
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                border = BorderStroke(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.primary
+                ),
+                contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth(0.85f) // Aumentado para evitar quebra de texto
+                    .height(56.dp)
+            ) {
                 Text(
-                    text = "Last msg: $msg",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    text = "CRIAR UMA CORRIDA",
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            CreateRaceButton(onClick = onCreateClick)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            JoinRaceButton(onClick = onJoinClick)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedButton(
-                onClick = onPublishClick,
-                shape = RoundedCornerShape(4.dp)
+            // Botão "Entrar numa corrida"
+            Button(
+                onClick = onJoinClick,
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.secondary
+                ),
+                border = BorderStroke(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.tertiary
+                ),
+                contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth(0.85f) // Aumentado para evitar quebra de texto
+                    .height(56.dp)
             ) {
-                Text(text = "Publish Hello Message")
+                Text(
+                    text = "ENTRAR NUMA CORRIDA",
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
             }
         }
-    }
-}
-
-@Composable
-fun JoinRaceButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Button(
-        onClick = onClick,
-        shape = RoundedCornerShape(4.dp),
-        modifier = modifier
-    ) {
-        Text(text = "Join a Race")
-    }
-}
-
-@Composable
-fun CreateRaceButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Button(
-        onClick = onClick,
-        shape = RoundedCornerShape(4.dp),
-        modifier = modifier
-    ) {
-        Text(text = "Create a Race")
     }
 }
