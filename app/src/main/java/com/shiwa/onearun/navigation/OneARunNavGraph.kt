@@ -1,6 +1,9 @@
 package com.shiwa.onearun.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -14,12 +17,15 @@ import com.shiwa.onearun.countdown.CountdownScreen
 import com.shiwa.onearun.createrace.CreateRaceScreen
 import com.shiwa.onearun.createrace.CreateRaceViewModel
 import com.shiwa.onearun.createracewaiting.CreateRaceWaiting
+import com.shiwa.onearun.createracewaiting.CreateRaceWaitingViewModel
 import com.shiwa.onearun.home.HomeScreen
 import com.shiwa.onearun.home.HomeViewModel
 import com.shiwa.onearun.joinrace.JoinRaceScreen
+import com.shiwa.onearun.joinrace.JoinRaceViewModel
 import com.shiwa.onearun.lobby.LobbyScreen
 import com.shiwa.onearun.navigation.OneARunDestinationsArgs.DISTANCE_ARG
 import com.shiwa.onearun.navigation.OneARunDestinationsArgs.SESSION_CODE_ARG
+import com.shiwa.onearun.navigation.OneARunDestinationsArgs.SESSION_ID_ARG
 import com.shiwa.onearun.navigation.OneARunDestinationsArgs.USER_NAME_ARG
 import com.shiwa.onearun.race.RaceScreen
 import com.shiwa.onearun.ui.screens.FinishScreen
@@ -51,8 +57,9 @@ fun OneARunNavGraph(
             val viewModel: CreateRaceViewModel = viewModel(factory = CreateRaceViewModel.Factory)
             CreateRaceScreen(
                 viewModel = viewModel,
-                onNavigateToWaiting = { joinCode, hostName, distance ->
+                onNavigateToWaiting = { sessionId, joinCode, hostName, distance ->
                     navActions.navigateToCreateRaceWaiting(
+                        sessionId = sessionId,
                         hostName = hostName,
                         distance = distance,
                         sessionCode = joinCode
@@ -67,19 +74,36 @@ fun OneARunNavGraph(
         composable(
             route = OneARunDestinations.CREATE_RACE_WAITING_ROUTE,
             arguments = listOf(
+                // sessionId é parte do caminho e obrigatório: sem ele a espera não tem o que vigiar.
+                // O ViewModel lê esse mesmo nome pelo SavedStateHandle.
+                navArgument(name = SESSION_ID_ARG) { type = NavType.StringType },
                 navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType; defaultValue = "" },
                 navArgument(name = USER_NAME_ARG) { type = NavType.StringType; defaultValue = "" },
                 navArgument(name = DISTANCE_ARG) { type = NavType.StringType; defaultValue = "" }
             )
         ) { entry ->
-            val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG) ?: ""
-            val userName = entry.arguments?.getString(USER_NAME_ARG) ?: ""
-            val distance = entry.arguments?.getString(DISTANCE_ARG) ?: ""
+            val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG).orEmpty()
+            val userName = entry.arguments?.getString(USER_NAME_ARG).orEmpty()
+            val distance = entry.arguments?.getString(DISTANCE_ARG).orEmpty()
+
+            // Antes não havia ViewModel aqui e guestJoined era fixo em false: nada vigiava o convidado
+            val viewModel: CreateRaceWaitingViewModel =
+                viewModel(factory = CreateRaceWaitingViewModel.Factory)
+            val uiState by viewModel.uiState.collectAsState()
 
             CreateRaceWaiting(
-                hostName = userName.ifEmpty { "João" },
-                distance = distance.ifEmpty { "400m" },
-                joinCode = sessionCode.ifEmpty { "UX9BS" },
+                guestJoined = uiState.guestJoined,
+                onGuestJoined = {
+                    navActions.navigateToLobby(
+                        sessionCode = sessionCode,
+                        popUpToRoute = OneARunDestinations.CREATE_RACE_WAITING_ROUTE
+                    )
+                },
+                // Sem os textos de exemplo ("João", "UX9BS") como fallback: se faltar argumento,
+                // é melhor ver a tela vazia do que um código falso.
+                hostName = userName,
+                distance = distance,
+                joinCode = sessionCode,
                 onNavigateBack = {
                     navController.popBackStack()
                 }
@@ -87,10 +111,26 @@ fun OneARunNavGraph(
         }
 
         composable(route = OneARunDestinations.JOIN_RACE_ROUTE) {
+            val viewModel: JoinRaceViewModel = viewModel(factory = JoinRaceViewModel.Factory)
+            val uiState by viewModel.uiState.collectAsState()
+
+            // Antes o onNavigateToLobby era {}: entrar na corrida nunca levava a lugar nenhum.
+            // Agora a navegação acontece quando o backend aceita a entrada (isJoined).
+            LaunchedEffect(uiState.isJoined) {
+                if (uiState.isJoined) {
+                    navActions.navigateToLobby(
+                        sessionCode = uiState.joinCode,
+                        popUpToRoute = OneARunDestinations.JOIN_RACE_ROUTE
+                    )
+                }
+            }
+
             JoinRaceScreen(
                 onNavigateBack = {
                     navController.popBackStack()
-                }
+                },
+                onNavigateToLobby = {},
+                viewModel = viewModel
             )
         }
 
@@ -98,7 +138,8 @@ fun OneARunNavGraph(
             route = OneARunDestinations.LOBBY_ROUTE,
             arguments = listOf(
                 navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType },
-                navArgument(name = USER_NAME_ARG) { type = NavType.StringType}
+                // Parâmetro de query é opcional: precisa de valor padrão
+                navArgument(name = USER_NAME_ARG) { type = NavType.StringType; defaultValue = "" }
             )
 
         ) { entry ->

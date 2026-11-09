@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,8 +30,11 @@ fun CreateRaceWaiting(
     hostName: String = "João",
     distance: String = "400m",
     joinCode: String = "UX9BS",
+    guestJoined: Boolean = false,
+    onGuestJoined: () -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
+    LaunchedEffect(guestJoined) { if (guestJoined) onGuestJoined() }
     val context = LocalContext.current
 
     Scaffold(modifier = modifier) { innerPadding ->

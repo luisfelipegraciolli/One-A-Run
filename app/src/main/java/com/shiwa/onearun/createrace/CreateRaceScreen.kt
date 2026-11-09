@@ -30,18 +30,22 @@ import androidx.compose.ui.unit.sp
 fun CreateRaceScreen(
     modifier: Modifier = Modifier,
     viewModel: CreateRaceViewModel,
-    onNavigateToWaiting: (joinCode: String, hostName: String, distance: String) -> Unit = { _, _, _ -> },
+    onNavigateToWaiting: (sessionId: String, joinCode: String, hostName: String, distance: String) -> Unit = { _, _, _, _ -> },
     onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    if (uiState.guestJoined) {
+
+    }
 
     CreateRaceContent(
         uiState = uiState,
         onHostNameChanged = viewModel::onHostNameChanged,
         onDistanceChanged = viewModel::onDistanceChanged,
         onCreateSessionClick = {
-            viewModel.createRace(onSuccess = { joinCode, hostName, distance ->
-                onNavigateToWaiting(joinCode, hostName, distance)
+            viewModel.createRace(onSuccess = { sessionId, joinCode, hostName, distance ->
+                onNavigateToWaiting(sessionId, joinCode, hostName, distance)
             })
         },
         modifier = modifier

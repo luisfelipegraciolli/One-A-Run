@@ -45,6 +45,7 @@ interface RaceRepository {
     suspend fun getRaceSession(sessionId: String): Result<RaceDetailsResponse>
     suspend fun joinRaceSession(guestRunnerName: String, joinCode: String): Result<JoinRaceResponse>
     suspend fun joinRaceSession(request: JoinRaceRequest): Result<JoinRaceResponse>
+    suspend fun observeTopic(topic: String): Flow<String>
 
     companion object {
         const val DEFAULT_RACE_TOPIC = "corrida-app/test/hello"
@@ -68,6 +69,10 @@ class RaceRepositoryImpl(
 
     override suspend fun subscribeToRaceTopic(topic: String) {
         mqttDataSource.subscribe(topic)
+    }
+
+    override suspend fun observeTopic(topic: String): Flow<String> {
+        return mqttDataSource.observeTopic(topic)
     }
 
     override suspend fun publishRaceMessage(message: String, topic: String) {

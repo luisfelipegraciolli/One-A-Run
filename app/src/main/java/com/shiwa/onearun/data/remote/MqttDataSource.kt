@@ -6,12 +6,15 @@ import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient
 import com.hivemq.client.mqtt.mqtt5.Mqtt5Client
 import com.hivemq.client.mqtt.mqtt5.message.publish.Mqtt5Publish
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import java.nio.charset.StandardCharsets
 
@@ -94,6 +97,35 @@ class MqttDataSource(
         }
     }
 
+    fun observeTopic(topic: String): Flow<String> = callbackFlow {
+        val activeClient = client
+        if (activeClient == null) {
+            close(IllegalStateException("MQTT client is null"))
+            return@callbackFlow
+        }
+
+        activeClient.subscribeWith()
+            .topicFilter(topic)
+            .qos(MqttQos.AT_LEAST_ONCE)
+            .callback { publish: Mqtt5Publish ->
+                trySend(String(publish.payloadAsBytes, StandardCharsets.UTF_8))
+            }
+            .send()
+            .whenComplete { _, error ->
+                if (error != null) {
+                    Log.w(tag, "Failed to subscribe to [$topic]", error)
+                    close(error)
+                } else {
+                    Log.d(tag, "Subscribed to [$topic]")
+                }
+            }
+
+        awaitClose {
+            activeClient.unsubscribeWith().topicFilter(topic).send()
+        }
+    }
+
+
     suspend fun publish(topic: String, payload: String) = withContext(Dispatchers.IO) {
         if (_connectionState.value != MqttConnectionState.Connected || client == null) {
             Log.d(tag, "Client not connected before publish. Attempting connect first...")
@@ -119,6 +151,7 @@ class MqttDataSource(
             Log.e(tag, "Exception during publish to [$topic]", e)
         }
     }
+
 
     suspend fun disconnect() = withContext(Dispatchers.IO) {
         Log.d(tag, "Disconnecting MQTT client...")

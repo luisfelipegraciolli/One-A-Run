@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.shiwa.onearun.OneARunApplication
-import com.shiwa.onearun.data.remote.api.RaceDto
 import com.shiwa.onearun.data.repository.RaceRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +17,9 @@ data class JoinRaceUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val joinCode: String = ""
-)
+) {
+    val isJoined: Boolean = joinCode.isNotEmpty()
+}
 
 class JoinRaceViewModel(
     private val repository: RaceRepository
@@ -28,12 +29,18 @@ class JoinRaceViewModel(
     val uiState: StateFlow<JoinRaceUiState> = _uiState.asStateFlow()
 
 
-    fun joinRace(joinCode: String){
+    fun joinRace(guestRunnerName: String, joinCode: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             // Mudar depois para o nome do usuário que ele digitar
             val result = repository.joinRaceSession(guestRunnerName = "Guest", joinCode = joinCode)
             if (result.isSuccess) {
+                val response = result.getOrNull()
+                val session = response?.sessionId ?: ""
+                repository.publishRaceMessage(
+                    "$guestRunnerName está na corrida!",
+                    topic = "race/$session/status"
+                )
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
