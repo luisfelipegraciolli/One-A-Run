@@ -14,11 +14,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class JoinRaceUiState(
+    val sessionId: String = "",
+    val guestRunnerName: String = "",
+    val joinCode: String = "",
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val joinCode: String = ""
+    val errorMessage: String? = null
 ) {
-    val isJoined: Boolean = joinCode.isNotEmpty()
+    val isJoined: Boolean = false
 }
 
 class JoinRaceViewModel(
@@ -28,24 +30,57 @@ class JoinRaceViewModel(
     private val _uiState = MutableStateFlow(JoinRaceUiState())
     val uiState: StateFlow<JoinRaceUiState> = _uiState.asStateFlow()
 
+    fun onGuestRunnerNameChanged(name: String) {
+        _uiState.update { it.copy(guestRunnerName = name, errorMessage = null) }
+    }
 
-    fun joinRace(guestRunnerName: String, joinCode: String) {
+    fun onJoinCodeChanged(code: String) {
+        _uiState.update { it.copy(joinCode = code, errorMessage = null) }
+    }
+
+    fun joinRace(onSuccess: (sessionId: String) -> Unit = { _ -> }) {
+        val currentState = _uiState.value
+
+        // Validação simples dos campos
+        if (currentState.guestRunnerName.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Por favor, preencha o seu nome.") }
+            return
+        }
+
+        if (currentState.joinCode.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Por favor, preencha o código da sessão.") }
+            return
+        }
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            // Mudar depois para o nome do usuário que ele digitar
-            val result = repository.joinRaceSession(guestRunnerName = "Guest", joinCode = joinCode)
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+            val result = repository.joinRaceSession(
+                guestRunnerName = currentState.guestRunnerName.trim(),
+                joinCode = currentState.joinCode.trim()
+            )
+
             if (result.isSuccess) {
                 val response = result.getOrNull()
-                val session = response?.sessionId ?: ""
-                repository.publishRaceMessage(
-                    "$guestRunnerName está na corrida!",
-                    topic = "race/$session/status"
-                )
-                _uiState.update { it.copy(isLoading = false) }
+                val sessionId = response?.sessionId ?: ""
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        sessionId = sessionId,
+                    )
+                }
+                onSuccess(sessionId)
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Erro ao entrar na sessão."
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error
+                    )
+                }
             }
         }
     }
-
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

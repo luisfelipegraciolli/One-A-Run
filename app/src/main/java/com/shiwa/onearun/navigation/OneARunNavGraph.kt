@@ -82,6 +82,7 @@ fun OneARunNavGraph(
                 navArgument(name = DISTANCE_ARG) { type = NavType.StringType; defaultValue = "" }
             )
         ) { entry ->
+            val sessionId = entry.arguments?.getString(SESSION_ID_ARG).orEmpty()
             val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG).orEmpty()
             val userName = entry.arguments?.getString(USER_NAME_ARG).orEmpty()
             val distance = entry.arguments?.getString(DISTANCE_ARG).orEmpty()
@@ -95,7 +96,7 @@ fun OneARunNavGraph(
                 guestJoined = uiState.guestJoined,
                 onGuestJoined = {
                     navActions.navigateToLobby(
-                        sessionCode = sessionCode,
+                        sessionId = sessionId,
                         popUpToRoute = OneARunDestinations.CREATE_RACE_WAITING_ROUTE
                     )
                 },
@@ -110,7 +111,10 @@ fun OneARunNavGraph(
             )
         }
 
-        composable(route = OneARunDestinations.JOIN_RACE_ROUTE) {
+        composable(
+            route = OneARunDestinations.JOIN_RACE_ROUTE,
+        ) {
+
             val viewModel: JoinRaceViewModel = viewModel(factory = JoinRaceViewModel.Factory)
             val uiState by viewModel.uiState.collectAsState()
 
@@ -119,8 +123,8 @@ fun OneARunNavGraph(
             LaunchedEffect(uiState.isJoined) {
                 if (uiState.isJoined) {
                     navActions.navigateToLobby(
-                        sessionCode = uiState.joinCode,
-                        popUpToRoute = OneARunDestinations.JOIN_RACE_ROUTE
+                        popUpToRoute = OneARunDestinations.JOIN_RACE_ROUTE,
+                        sessionId = uiState.sessionId
                     )
                 }
             }
@@ -129,7 +133,7 @@ fun OneARunNavGraph(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onNavigateToLobby = {},
+                onNavigateToLobby = { navActions.navigateToLobby(sessionId = uiState.sessionId) },
                 viewModel = viewModel
             )
         }
@@ -137,13 +141,11 @@ fun OneARunNavGraph(
         composable(
             route = OneARunDestinations.LOBBY_ROUTE,
             arguments = listOf(
-                navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType },
-                // Parâmetro de query é opcional: precisa de valor padrão
-                navArgument(name = USER_NAME_ARG) { type = NavType.StringType; defaultValue = "" }
+                navArgument(name = SESSION_ID_ARG) { type = NavType.StringType },
             )
 
         ) { entry ->
-            val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG)
+            val sessionId = entry.arguments?.getString(SESSION_ID_ARG)
             LobbyScreen(
                 onNavigateBack = {
                     navController.popBackStack()

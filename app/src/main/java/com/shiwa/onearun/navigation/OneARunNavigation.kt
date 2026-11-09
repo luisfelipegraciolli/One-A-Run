@@ -45,9 +45,10 @@ object OneARunDestinations {
     const val CREATE_RACE_WAITING_ROUTE =
         "$CREATE_RACE_WAITING_SCREEN/{$SESSION_ID_ARG}?$SESSION_CODE_ARG={$SESSION_CODE_ARG}&$USER_NAME_ARG={$USER_NAME_ARG}&$DISTANCE_ARG={$DISTANCE_ARG}"
     const val JOIN_RACE_ROUTE = JOIN_RACE_SCREEN
-    // Navega para uma sessão criada com um nome escolhido
-    const val LOBBY_ROUTE = "$LOBBY_SCREEN/{$SESSION_CODE_ARG}?$USER_NAME_ARG={$USER_NAME_ARG}"
+    const val LOBBY_ROUTE = "$LOBBY_SCREEN/{$SESSION_ID_ARG}"
     const val COUNTDOWN_ROUTE = COUNTDOWN_SCREEN
+
+    // Reescrever para usar o SESSION_ID_ARG
     const val RACE_ROUTE = "$RACE_SCREEN/{$SESSION_CODE_ARG}"
     const val FINISH_ROUTE = "$FINISH_SCREEN/{$SESSION_CODE_ARG}"
 }
@@ -83,10 +84,10 @@ class OneARunNavigationActions(
      * popUpToRoute: tela de origem que deve sair da pilha ao avançar
      * (a espera, no caso do anfitrião; o formulário de entrada, no caso do convidado).
      */
-    fun navigateToLobby(sessionCode: String, popUpToRoute: String? = null) {
-        val uppercaseSessionCode = Uri.encode(sessionCode.uppercase(getDefault()))
+    fun navigateToLobby(sessionId: String, popUpToRoute: String? = null) {
+        val encodedSessionId = Uri.encode(sessionId)
         // O nome vai na query: sem Uri.encode, espaço, "&" ou "/" quebrariam a rota
-        navController.navigate("$LOBBY_SCREEN/$uppercaseSessionCode") {
+        navController.navigate("$LOBBY_SCREEN/$encodedSessionId") {
             if (popUpToRoute != null) {
                 popUpTo(popUpToRoute) { inclusive = true }
             }
