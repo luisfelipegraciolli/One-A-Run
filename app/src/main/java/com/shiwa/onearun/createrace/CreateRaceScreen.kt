@@ -35,10 +35,6 @@ fun CreateRaceScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    if (uiState.guestJoined) {
-
-    }
-
     CreateRaceContent(
         uiState = uiState,
         onHostNameChanged = viewModel::onHostNameChanged,
