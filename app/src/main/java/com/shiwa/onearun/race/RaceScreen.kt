@@ -11,14 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -43,7 +42,7 @@ fun RaceScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    androidx.compose.runtime.LaunchedEffect(uiState.sessionFinished) {
+    LaunchedEffect(uiState.sessionFinished) {
         if (uiState.sessionFinished) {
             onNavigateToFinish()
         }
@@ -51,28 +50,6 @@ fun RaceScreen(
 
     val context = LocalContext.current
 
-    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            viewModel.onLocationPermissionGranted()
-        } else {
-            viewModel.onLocationPermissionDenied()
-        }
-    }
-
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.ACCESS_FINE_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-
-        if (hasPermission) {
-            viewModel.onLocationPermissionGranted()
-        } else {
-            permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-    }
     DisposableEffect(Unit) {
         val window = (context as? Activity)?.window
         window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -123,21 +100,6 @@ fun RaceContent(
                 return@Scaffold
             }
 
-            // Se permissão de localização foi negada
-            if (uiState.locationPermissionDenied) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Permissão de localização é necessária para registrar seu progresso na corrida.",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
             // Topo: Distância Atual / Distância Alvo
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -182,7 +144,6 @@ fun RaceContent(
                 val secondRunnerColor: Color
 
                 if (uiState.isFirstPlace) {
-                    // Eu estou em 1º lugar: Meu nome em VERDE, oponente na cor padrão
                     firstRunnerName = uiState.myName
                     firstRunnerDist = uiState.myDistanceMeters.toInt()
                     firstRunnerColor = FirstPlaceGreen
@@ -191,7 +152,6 @@ fun RaceContent(
                     secondRunnerDist = uiState.opponentDistanceMeters.toInt()
                     secondRunnerColor = MaterialTheme.colorScheme.onBackground
                 } else {
-                    // Eu estou em 2º lugar: Oponente na cor padrão, Meu nome em VERMELHO
                     firstRunnerName = uiState.opponentName
                     firstRunnerDist = uiState.opponentDistanceMeters.toInt()
                     firstRunnerColor = MaterialTheme.colorScheme.onBackground

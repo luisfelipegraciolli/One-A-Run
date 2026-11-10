@@ -1,34 +1,43 @@
 package com.shiwa.onearun.home
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.shiwa.onearun.OneARunApplication
-import com.shiwa.onearun.data.repository.RaceRepository
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
-class HomeViewModel(
-    private val repository: RaceRepository
-) : ViewModel() {
+data class HomeUiState(
+    val locationPermissionGranted: Boolean = false
+)
 
-    init {
-        connectToBroker()
+class HomeViewModel : ViewModel() {
+
+    private val _uiState = MutableStateFlow(HomeUiState())
+    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    fun checkLocationPermission(context: Context) {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        _uiState.update { it.copy(locationPermissionGranted = hasPermission) }
     }
 
-    private fun connectToBroker() {
-        viewModelScope.launch {
-            repository.connectToBroker()
-        }
+    fun onPermissionResult(isGranted: Boolean) {
+        _uiState.update { it.copy(locationPermissionGranted = isGranted) }
     }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                val application = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as OneARunApplication)
-                HomeViewModel(repository = application.container.raceRepository)
-            }
+            initializer { HomeViewModel() }
         }
     }
 }

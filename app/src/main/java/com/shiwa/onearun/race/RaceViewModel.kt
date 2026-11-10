@@ -1,5 +1,6 @@
 package com.shiwa.onearun.race
 
+import android.annotation.SuppressLint
 import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 data class RaceUiState(
     val myName: String = "Você",
@@ -35,8 +37,7 @@ data class RaceUiState(
     val isOpponentFinished: Boolean = false,
     val sessionFinished: Boolean = false,
     val isWaitingOpponentToFinish: Boolean = false,
-    val errorMessage: String? = null,
-    val locationPermissionDenied: Boolean = false
+    val errorMessage: String? = null
 )
 
 data class ProgressPoint(
@@ -72,10 +73,6 @@ data class MqttResultDto(
 )
 
 object RaceUtils {
-    /**
-     * Calcula o pace atual em segundos por km (s/km) com base em uma janela móvel (ex: ~10s).
-     * Retorna null se na janela houver menos de 10m percorridos ou se o resultado estiver fora de 2:00 a 20:00 min/km (120 a 1200 s/km).
-     */
     fun calculatePace(
         history: List<ProgressPoint>,
         nowMillis: Long,
@@ -97,15 +94,11 @@ object RaceUtils {
 
         val paceSecPerKm = (1000.0 / speedMetersPerSec).roundToInt()
 
-        // Descarte valores fora de 2:00 (120s) a 20:00 (1200s) min/km
-        if (paceSecPerKm < 120 || paceSecPerKm > 1200) return null
+        if (paceSecPerKm !in 120..1200) return null
 
         return paceSecPerKm
     }
 
-    /**
-     * Formata um pace em segundos por km para "m:ss" (ex.: 331s -> "5:31"). Retorna "--:--" se for nulo.
-     */
     fun formatPace(paceSecPerKm: Int?): String {
         if (paceSecPerKm == null) return "--:--"
         val minutes = paceSecPerKm / 60
@@ -113,9 +106,6 @@ object RaceUtils {
         return "%d:%02d".format(minutes, seconds)
     }
 
-    /**
-     * Formata o tempo decorrido em milissegundos para mm:ss ou h:mm:ss.
-     */
     fun formatTime(elapsedMillis: Long): String {
         val totalSeconds = (elapsedMillis / 1000).coerceAtLeast(0)
         val hours = totalSeconds / 3600
@@ -129,9 +119,6 @@ object RaceUtils {
         }
     }
 
-    /**
-     * Determina se o jogador local está em 1º lugar.
-     */
     fun calculateIsFirstPlace(
         myDistance: Double,
         opponentDistance: Double,
@@ -186,6 +173,7 @@ class RaceViewModel(
     private fun startRaceSession(sessionId: String, runnerId: String) {
         fetchRunnerNames(sessionId, runnerId)
         startTimer()
+        startLocationTracking()
         observeProgress(sessionId, runnerId)
         observeResult(sessionId, runnerId)
     }
@@ -221,7 +209,7 @@ class RaceViewModel(
                 val elapsed = (timeProvider() - startTimeMillis).coerceAtLeast(0L)
                 val timeStr = RaceUtils.formatTime(elapsed)
                 _uiState.update { it.copy(timeText = timeStr) }
-                delay(500)
+                delay(500.milliseconds)
             }
         }
     }
@@ -335,16 +323,6 @@ class RaceViewModel(
         }
     }
 
-    fun onLocationPermissionGranted() {
-        _uiState.update { it.copy(locationPermissionDenied = false) }
-        startLocationTracking()
-    }
-
-    fun onLocationPermissionDenied() {
-        _uiState.update { it.copy(locationPermissionDenied = true) }
-        stopLocationTracking()
-    }
-
     fun startLocationTracking() {
         if (locationJob != null) return
         val session = repository.currentSession.value
@@ -372,6 +350,7 @@ class RaceViewModel(
         locationJob = null
     }
 
+    @SuppressLint("EmptySuperCall")
     override fun onCleared() {
         super.onCleared()
         stopLocationTracking()
