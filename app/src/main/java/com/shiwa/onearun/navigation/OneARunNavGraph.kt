@@ -94,6 +94,7 @@ fun OneARunNavGraph(
             CreateRaceWaiting(
                 guestJoined = uiState.guestJoined,
                 onGuestJoined = {
+                    // Mudar isso para navegar para lobby, isso só está sendo feito para testes
                     navActions.navigateToRace(
                         sessionCode = sessionCode,
                         popUpToRoute = OneARunDestinations.CREATE_RACE_WAITING_ROUTE
