@@ -16,7 +16,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import retrofit2.Response
 
 class RaceRepositoryTest {
 
@@ -24,7 +23,12 @@ class RaceRepositoryTest {
 
     @Test
     fun testCreateRaceRequestAndResponseJsonSerialization() {
-        val requestJson = gson.toJson(CreateRaceRequest(distanceInMeters = 100))
+        val requestJson = gson.toJson(
+            CreateRaceRequest(
+                hostRunnerName = "John",
+                distanceInMeters = 100
+            )
+        )
         assertTrue(requestJson.contains("distanceInMeters"))
         assertTrue(requestJson.contains("100"))
 
@@ -32,7 +36,8 @@ class RaceRepositoryTest {
             {
                 "sessionId": "7110ee1d-3fdc-4f5e-8136-41a700c7b467",
                 "joinCode": "BW7LYW",
-                "runnerId": "987968a3-90ac-4232-9f06-5246a531f26f"
+                "runnerId": "987968a3-90ac-4232-9f06-5246a531f26f",
+                "hostRunnerName": "John"
             }
         """.trimIndent()
         val response = gson.fromJson(responseJson, CreateRaceResponse::class.java)
@@ -48,8 +53,10 @@ class RaceRepositoryTest {
                 "id": "7110ee1d-3fdc-4f5e-8136-41a700c7b467",
                 "joinCode": "BW7LYW",
                 "distanceMeters": 100,
+                "hostRunnerName": "John",
                 "hostRunnerId": "987968a3-90ac-4232-9f06-5246a531f26f",
                 "guestRunnerId": "4ae557ff-187b-4995-9d3a-bb32cca7ef46",
+                "guestRunnerName": "Michael",
                 "status": "READY",
                 "createdAt": {
                     "epochSeconds": 1794169048,
@@ -83,14 +90,20 @@ class RaceRepositoryTest {
 
     @Test
     fun testJoinRaceRequestAndResponseJsonDeserialization() {
-        val requestJson = gson.toJson(JoinRaceRequest(joinCode = "BW7LYW"))
+        val requestJson = gson.toJson(
+            JoinRaceRequest(
+                guestRunnerName = "Michael",
+                joinCode = "BW7LYW"
+            )
+        )
         assertTrue(requestJson.contains("joinCode"))
 
         val responseJson = """
             {
                 "sessionId": "7110ee1d-3fdc-4f5e-8136-41a700c7b467",
                 "guestRunnerId": "4ae557ff-187b-4995-9d3a-bb32cca7ef46",
-                "distanceMeters": 100
+                "distanceMeters": 100,
+                "guestRunnerName": "Michael"
             }
         """.trimIndent()
         val response = gson.fromJson(responseJson, JoinRaceResponse::class.java)
@@ -106,13 +119,15 @@ class RaceRepositoryTest {
                 return CreateRaceResponse(
                     sessionId = "session-123",
                     joinCode = "CODE12",
-                    runnerId = "host-456"
+                    runnerId = "host-456",
+                    hostRunnerName = "John"
                 )
             }
         }
 
         val repository = RaceRepositoryImpl(raceApiService = mockApiService)
-        val result = repository.createRaceSession(100)
+        val request = CreateRaceRequest(hostRunnerName = "John", distanceInMeters = 100)
+        val result = repository.createRaceSession(request)
 
         assertTrue(result.isSuccess)
         val createResponse = result.getOrNull()
@@ -139,7 +154,9 @@ class RaceRepositoryTest {
                     joinCode = "CODE12",
                     distanceMeters = 200,
                     hostRunnerId = "host-1",
+                    hostRunnerName = "John",
                     guestRunnerId = "guest-2",
+                    guestRunnerName = "Michael",
                     status = "READY"
                 )
             }
@@ -167,13 +184,15 @@ class RaceRepositoryTest {
                 return JoinRaceResponse(
                     sessionId = "session-777",
                     guestRunnerId = "guest-888",
-                    distanceMeters = 500
+                    distanceMeters = 500,
+                    guestRunnerName = "Michael"
                 )
             }
         }
 
         val repository = RaceRepositoryImpl(raceApiService = mockApiService)
-        val result = repository.joinRaceSession("BW7LYW")
+        val request = JoinRaceRequest(guestRunnerName = "Michael", joinCode = "BW7LYW")
+        val result = repository.joinRaceSession(request)
 
         assertTrue(result.isSuccess)
         val response = result.getOrNull()

@@ -20,7 +20,7 @@ data class JoinRaceUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 ) {
-    val isJoined: Boolean = false
+    val isJoined: Boolean get() = sessionId.isNotBlank()
 }
 
 class JoinRaceViewModel(

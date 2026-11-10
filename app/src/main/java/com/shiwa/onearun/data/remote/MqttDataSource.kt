@@ -152,6 +152,19 @@ class MqttDataSource(
         }
     }
 
+    suspend fun publishQos0(topic: String, payload: String) = withContext(Dispatchers.IO) {
+        val activeClient = client ?: return@withContext
+        try {
+            activeClient.publishWith()
+                .topic(topic)
+                .qos(MqttQos.AT_MOST_ONCE)
+                .payload(payload.toByteArray(StandardCharsets.UTF_8))
+                .send()
+        } catch (e: Exception) {
+            Log.e(tag, "Exception during async publish to [$topic]", e)
+        }
+    }
+
 
     suspend fun disconnect() = withContext(Dispatchers.IO) {
         Log.d(tag, "Disconnecting MQTT client...")

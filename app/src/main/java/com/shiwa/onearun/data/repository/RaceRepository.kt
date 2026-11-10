@@ -1,5 +1,7 @@
 package com.shiwa.onearun.data.repository
 
+import com.google.gson.Gson
+import com.shiwa.onearun.data.location.LocationUpdate
 import com.shiwa.onearun.data.remote.MqttConnectionState
 import com.shiwa.onearun.data.remote.MqttDataSource
 import com.shiwa.onearun.data.remote.api.CreateRaceRequest
@@ -26,10 +28,22 @@ data class RaceSessionState(
     val details: RaceDetailsResponse? = null
 )
 
+data class RaceStats(
+    val bestPaceSecPerKm: Int? = null,
+    val myFinishMillis: Long? = null,
+    val raceDurationMillis: Long? = null,
+    val myDistanceMeters: Double = 0.0,
+    val opponentDistanceMeters: Double = 0.0,
+    val won: Boolean? = null
+)
+
 interface RaceRepository {
     val connectionState: StateFlow<MqttConnectionState>
     val incomingMessages: Flow<String>
     val currentSession: StateFlow<RaceSessionState?>
+    val raceStats: StateFlow<RaceStats?>
+
+    fun updateRaceStats(stats: RaceStats)
 
     suspend fun connectToBroker()
     suspend fun subscribeToRaceTopic(topic: String = DEFAULT_RACE_TOPIC)
@@ -46,6 +60,7 @@ interface RaceRepository {
     suspend fun joinRaceSession(guestRunnerName: String, joinCode: String): Result<JoinRaceResponse>
     suspend fun joinRaceSession(request: JoinRaceRequest): Result<JoinRaceResponse>
     suspend fun observeTopic(topic: String): Flow<String>
+    suspend fun publishLocation(sessionId: String, runnerId: String, update: LocationUpdate)
 
     companion object {
         const val DEFAULT_RACE_TOPIC = "corrida-app/test/hello"
@@ -60,8 +75,26 @@ class RaceRepositoryImpl(
     override val connectionState: StateFlow<MqttConnectionState> = mqttDataSource.connectionState
     override val incomingMessages: Flow<String> = mqttDataSource.incomingMessages
 
+    private val gson = Gson()
     private val _currentSession = MutableStateFlow<RaceSessionState?>(null)
     override val currentSession: StateFlow<RaceSessionState?> = _currentSession.asStateFlow()
+
+    private val _raceStats = MutableStateFlow<RaceStats?>(null)
+    override val raceStats: StateFlow<RaceStats?> = _raceStats.asStateFlow()
+
+    override fun updateRaceStats(stats: RaceStats) {
+        _raceStats.value = stats
+    }
+
+    override suspend fun publishLocation(
+        sessionId: String,
+        runnerId: String,
+        update: LocationUpdate
+    ) {
+        val topic = "race/$sessionId/runner/$runnerId/location"
+        val payload = gson.toJson(update)
+        mqttDataSource.publishQos0(topic, payload)
+    }
 
     override suspend fun connectToBroker() {
         mqttDataSource.connect()

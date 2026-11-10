@@ -28,6 +28,7 @@ import com.shiwa.onearun.navigation.OneARunDestinationsArgs.SESSION_CODE_ARG
 import com.shiwa.onearun.navigation.OneARunDestinationsArgs.SESSION_ID_ARG
 import com.shiwa.onearun.navigation.OneARunDestinationsArgs.USER_NAME_ARG
 import com.shiwa.onearun.race.RaceScreen
+import com.shiwa.onearun.race.RaceViewModel
 import com.shiwa.onearun.ui.screens.FinishScreen
 
 @Composable
@@ -170,8 +171,13 @@ fun OneARunNavGraph(
             )
 
         ) { entry ->
-            val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG)
+            val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG).orEmpty()
+            val viewModel: RaceViewModel = viewModel(factory = RaceViewModel.Factory)
             RaceScreen(
+                viewModel = viewModel,
+                onNavigateToFinish = {
+                    navActions.navigateToFinish(sessionCode)
+                },
                 onNavigateBack = {
                     navController.popBackStack()
                 }

@@ -77,7 +77,7 @@ data class RaceDetailsResponse(
     @SerializedName("guestRunnerId")
     val guestRunnerId: String? = null,
     @SerializedName("guestRunnerName")
-    val guestRunnerName: String,
+    val guestRunnerName: String? = null,
     @SerializedName("status")
     val status: String,
     @SerializedName("createdAt")
@@ -85,9 +85,9 @@ data class RaceDetailsResponse(
     @SerializedName("winnerRunnerId")
     val winnerRunnerId: String? = null,
     @SerializedName("hostDistanceMeters")
-    val hostDistanceMeters: Int? = null,
+    val hostDistanceMeters: Double? = null,
     @SerializedName("guestDistanceMeters")
-    val guestDistanceMeters: Int? = null,
+    val guestDistanceMeters: Double? = null,
     @SerializedName("finishedAt")
     val finishedAt: RaceTimestampDto? = null,
     @SerializedName("version")
