@@ -83,6 +83,7 @@ fun OneARunNavGraph(
                 navArgument(name = DISTANCE_ARG) { type = NavType.StringType; defaultValue = "" }
             )
         ) { entry ->
+            val sessionId = entry.arguments?.getString(SESSION_ID_ARG).orEmpty()
             val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG).orEmpty()
             val userName = entry.arguments?.getString(USER_NAME_ARG).orEmpty()
             val distance = entry.arguments?.getString(DISTANCE_ARG).orEmpty()
@@ -94,8 +95,8 @@ fun OneARunNavGraph(
             CreateRaceWaiting(
                 guestJoined = uiState.guestJoined,
                 onGuestJoined = {
-                    navActions.navigateToRace(
-                        sessionCode = sessionCode,
+                    navActions.navigateToLobby(
+                        sessionId = sessionId,
                         popUpToRoute = OneARunDestinations.CREATE_RACE_WAITING_ROUTE
                     )
                 },
@@ -116,8 +117,8 @@ fun OneARunNavGraph(
 
             LaunchedEffect(uiState.isJoined) {
                 if (uiState.isJoined) {
-                    navActions.navigateToRace(
-                        sessionCode = uiState.joinCode,
+                    navActions.navigateToLobby(
+                        sessionId = uiState.sessionId,
                         popUpToRoute = OneARunDestinations.JOIN_RACE_ROUTE
                     )
                 }
@@ -128,8 +129,8 @@ fun OneARunNavGraph(
                     navController.popBackStack()
                 },
                 onNavigateToLobby = {
-                    navActions.navigateToRace(
-                        sessionCode = uiState.joinCode,
+                    navActions.navigateToLobby(
+                        sessionId = uiState.sessionId,
                         popUpToRoute = OneARunDestinations.JOIN_RACE_ROUTE
                     )
                 },
