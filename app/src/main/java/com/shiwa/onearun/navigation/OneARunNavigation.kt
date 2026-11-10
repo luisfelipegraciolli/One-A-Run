@@ -94,9 +94,13 @@ class OneARunNavigationActions(
         }
     }
 
-    fun navigateToRace(sessionCode: String){
+    fun navigateToRace(sessionCode: String, popUpToRoute: String? = null) {
         val uppercaseSessionCode = sessionCode.uppercase(getDefault())
-        navController.navigate("$RACE_SCREEN/$uppercaseSessionCode")
+        navController.navigate("$RACE_SCREEN/$uppercaseSessionCode") {
+            if (popUpToRoute != null) {
+                popUpTo(popUpToRoute) { inclusive = true }
+            }
+        }
     }
 
     fun navigateToFinish(sessionCode: String){

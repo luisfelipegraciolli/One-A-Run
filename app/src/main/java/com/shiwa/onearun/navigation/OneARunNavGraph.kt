@@ -96,8 +96,8 @@ fun OneARunNavGraph(
             CreateRaceWaiting(
                 guestJoined = uiState.guestJoined,
                 onGuestJoined = {
-                    navActions.navigateToLobby(
-                        sessionId = sessionId,
+                    navActions.navigateToRace(
+                        sessionCode = sessionCode,
                         popUpToRoute = OneARunDestinations.CREATE_RACE_WAITING_ROUTE
                     )
                 },
@@ -119,13 +119,11 @@ fun OneARunNavGraph(
             val viewModel: JoinRaceViewModel = viewModel(factory = JoinRaceViewModel.Factory)
             val uiState by viewModel.uiState.collectAsState()
 
-            // Antes o onNavigateToLobby era {}: entrar na corrida nunca levava a lugar nenhum.
-            // Agora a navegação acontece quando o backend aceita a entrada (isJoined).
             LaunchedEffect(uiState.isJoined) {
                 if (uiState.isJoined) {
-                    navActions.navigateToLobby(
-                        popUpToRoute = OneARunDestinations.JOIN_RACE_ROUTE,
-                        sessionId = uiState.sessionId
+                    navActions.navigateToRace(
+                        sessionCode = uiState.joinCode,
+                        popUpToRoute = OneARunDestinations.JOIN_RACE_ROUTE
                     )
                 }
             }
@@ -134,7 +132,12 @@ fun OneARunNavGraph(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onNavigateToLobby = { navActions.navigateToLobby(sessionId = uiState.sessionId) },
+                onNavigateToLobby = {
+                    navActions.navigateToRace(
+                        sessionCode = uiState.joinCode,
+                        popUpToRoute = OneARunDestinations.JOIN_RACE_ROUTE
+                    )
+                },
                 viewModel = viewModel
             )
         }
