@@ -1,5 +1,7 @@
 package com.shiwa.onearun.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -39,11 +41,11 @@ fun OneARunNavGraph(
     navActions: OneARunNavigationActions = remember(navController) {
         OneARunNavigationActions(navController)
     }
-){
+) {
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        modifier = modifier
+        modifier = modifier.background(MaterialTheme.colorScheme.background)
     ) {
         composable(route = OneARunDestinations.HOME_ROUTE) {
             val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
@@ -75,20 +77,16 @@ fun OneARunNavGraph(
         composable(
             route = OneARunDestinations.CREATE_RACE_WAITING_ROUTE,
             arguments = listOf(
-                // sessionId é parte do caminho e obrigatório: sem ele a espera não tem o que vigiar.
-                // O ViewModel lê esse mesmo nome pelo SavedStateHandle.
                 navArgument(name = SESSION_ID_ARG) { type = NavType.StringType },
                 navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType; defaultValue = "" },
                 navArgument(name = USER_NAME_ARG) { type = NavType.StringType; defaultValue = "" },
                 navArgument(name = DISTANCE_ARG) { type = NavType.StringType; defaultValue = "" }
             )
         ) { entry ->
-            val sessionId = entry.arguments?.getString(SESSION_ID_ARG).orEmpty()
             val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG).orEmpty()
             val userName = entry.arguments?.getString(USER_NAME_ARG).orEmpty()
             val distance = entry.arguments?.getString(DISTANCE_ARG).orEmpty()
 
-            // Antes não havia ViewModel aqui e guestJoined era fixo em false: nada vigiava o convidado
             val viewModel: CreateRaceWaitingViewModel =
                 viewModel(factory = CreateRaceWaitingViewModel.Factory)
             val uiState by viewModel.uiState.collectAsState()
@@ -101,8 +99,6 @@ fun OneARunNavGraph(
                         popUpToRoute = OneARunDestinations.CREATE_RACE_WAITING_ROUTE
                     )
                 },
-                // Sem os textos de exemplo ("João", "UX9BS") como fallback: se faltar argumento,
-                // é melhor ver a tela vazia do que um código falso.
                 hostName = userName,
                 distance = distance,
                 joinCode = sessionCode,
@@ -115,7 +111,6 @@ fun OneARunNavGraph(
         composable(
             route = OneARunDestinations.JOIN_RACE_ROUTE,
         ) {
-
             val viewModel: JoinRaceViewModel = viewModel(factory = JoinRaceViewModel.Factory)
             val uiState by viewModel.uiState.collectAsState()
 
@@ -147,9 +142,7 @@ fun OneARunNavGraph(
             arguments = listOf(
                 navArgument(name = SESSION_ID_ARG) { type = NavType.StringType },
             )
-
-        ) { entry ->
-            val sessionId = entry.arguments?.getString(SESSION_ID_ARG)
+        ) {
             LobbyScreen(
                 onNavigateBack = {
                     navController.popBackStack()
@@ -172,7 +165,6 @@ fun OneARunNavGraph(
             arguments = listOf(
                 navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType }
             )
-
         ) { entry ->
             val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG).orEmpty()
             val viewModel: RaceViewModel = viewModel(factory = RaceViewModel.Factory)
@@ -192,9 +184,7 @@ fun OneARunNavGraph(
             arguments = listOf(
                 navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType },
             )
-
-        ) { entry ->
-            val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG)
+        ) {
             FinishScreen(
                 onNavigateHome = {
                     navActions.navigateToHome()

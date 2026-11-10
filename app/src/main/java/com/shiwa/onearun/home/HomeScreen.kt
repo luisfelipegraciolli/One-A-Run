@@ -86,7 +86,10 @@ fun HomeScreenContent(
     modifier: Modifier = Modifier,
     locationPermissionFlag: Boolean
 ) {
-    Scaffold(modifier = modifier) { innerPadding ->
+    Scaffold(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

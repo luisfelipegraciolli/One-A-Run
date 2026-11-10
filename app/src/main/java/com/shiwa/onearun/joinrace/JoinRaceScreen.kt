@@ -58,7 +58,10 @@ fun JoinRaceContent(
     onJoinRaceClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(modifier = modifier) { innerPadding ->
+    Scaffold(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
