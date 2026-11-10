@@ -1,40 +1,59 @@
 # One A Run
 
-One A Run is an Android prototype for setting up a head-to-head running session. A runner can create a session with a name and distance, share its join code, and have another runner join from their device.
+One A Run is an Android app for setting up and running head-to-head races. Runners create a session,
+share a join code, and race while the app tracks GPS location and displays live progress.
 
 ## Features
 
-- Create a race session and receive a shareable join code.
-- Join an existing session with a runner name and join code.
-- Check for a joining runner using the race API, with MQTT status updates and polling while waiting.
+- Create a race session with a runner name and target distance.
+- Invite another runner with a shareable session code.
+- Join a session from another device using its code.
+- Track race distance and pace using GPS, with race updates and results exchanged through MQTT.
 - Built with Kotlin and Jetpack Compose.
 
-The session creation and joining flow is connected to a backend. The lobby, countdown, and race screens are still placeholders; live race tracking is not implemented yet.
+The app relies on the One A Run backend for session management and race processing. See
+the [backend project](https://github.com/luisfelipegraciolli/One-a-Run-Backend) for its API and
+implementation details.
 
-## Getting started
+## Tech stack
+
+- **Kotlin**, Coroutines and Flow
+- **Jetpack Compose** with Material 3 and **Navigation Compose**
+- **MVVM** with `StateFlow` and manual dependency injection (`AppContainer` +
+  `ViewModelProvider.Factory`)
+- **Retrofit** + **Gson** for the REST API
+- **HiveMQ MQTT Client** (MQTT 5) for real-time messaging
+- **Fused Location Provider** (Google Play services) for GPS
+
+## Get started
 
 ### Requirements
 
-- Android Studio with Android SDK Platform 37 installed.
-- JDK 21 (the Gradle daemon toolchain is configured for Java 21).
-- A running One A Run backend reachable from the Android device or emulator. The app expects the API paths defined in [RaceApiService.kt](app/src/main/java/com/shiwa/onearun/data/remote/api/RaceApiService.kt).
-- Internet access to reach the configured MQTT broker.
+- Android Studio and Android SDK Platform 37.
+- JDK 21. The Gradle wrapper is configured to use Gradle 9.4.1.
+- A running One A Run backend and internet access to the configured MQTT broker.
+- An Android device or emulator with location services enabled. The app requests location permission
+  when opened.
 
-### Configure the backend
+### Configure the backend connection
 
-The API base URL is currently hard-coded in [AppContainer.kt](app/src/main/java/com/shiwa/onearun/data/container/AppContainer.kt). Before running the app, change it to the address of your backend:
+The API base URL is currently set in [
+`AppContainer.kt`](app/src/main/java/com/shiwa/onearun/data/container/AppContainer.kt). Change it to
+an address reachable from the device, keeping the trailing slash:
 
 ```kotlin
-private val baseUrl = "http://192.168.1.20:8080/"
+private val baseUrl = "http://10.0.2.2:8080/"
 ```
 
-Use an address reachable from the device. For an Android emulator connecting to a backend running on the development machine, `http://10.0.2.2:8080/` is typically used; for a physical device, use the machine's LAN address. Keep the trailing slash. The app currently uses cleartext HTTP, which is suitable only for local development; use HTTPS for a production backend.
+`10.0.2.2` is the Android emulator's address for reaching a backend running on the development
+machine. For a physical device, use the machine's LAN address instead. The MQTT broker is configured
+in the same file (`broker.emqx.io:1883`).
 
-The MQTT broker is configured separately in [AppContainer.kt](app/src/main/java/com/shiwa/onearun/data/container/AppContainer.kt) as `broker.emqx.io:1883`.
+The app currently permits cleartext HTTP for local development. Use HTTPS for a production API.
 
 ### Build and run
 
-Clone the repository and open it in Android Studio, or build from the repository root with the Gradle wrapper:
+Clone the repository and build the debug app:
 
 ```bash
 git clone https://github.com/luisfelipegraciolli/One-A-Run-Android.git
@@ -42,27 +61,41 @@ cd One-A-Run-Android
 ./gradlew assembleDebug
 ```
 
-To install the debug app on a connected device or running emulator:
+Install it on a connected device or running emulator:
 
 ```bash
 ./gradlew installDebug
 ```
 
-You can also open the project in Android Studio, let Gradle sync, select an emulator or connected device, and run the `app` configuration.
+Alternatively, open the repository in Android Studio, sync Gradle, select a device, and run the
+`app` configuration.
 
 ### Run tests
+
+Run the Android unit tests with:
 
 ```bash
 ./gradlew testDebugUnitTest
 ```
 
+## Roadmap
+
+- [ ] Map with both runners' routes on the finish screen
+- [ ] Server-provided start time, so both stopwatches start in sync
+- [ ] Foreground service to keep tracking with the screen off
+- [ ] Authentication and broker access control
+
 ## Help and documentation
 
-- Report a bug or request a feature in the [GitHub issue tracker](https://github.com/luisfelipegraciolli/One-A-Run-Android/issues).
-- Check [app/build.gradle.kts](app/build.gradle.kts) for Android SDK settings and app dependencies, and [gradle/libs.versions.toml](gradle/libs.versions.toml) for dependency versions.
+- [Report a bug or request a feature](https://github.com/luisfelipegraciolli/One-A-Run-Android/issues).
+- See the [One A Run backend](https://github.com/luisfelipegraciolli/One-a-Run-Backend) for backend
+  and API information.
+- Review [`app/build.gradle.kts`](app/build.gradle.kts) for Android SDK settings and app
+  dependencies, and [`gradle/libs.versions.toml`](gradle/libs.versions.toml) for dependency
+  versions.
 
 ## Maintainers and contributing
 
-One A Run is maintained by [Luis Graciolli](https://github.com/luisfelipegraciolli).
-
-Contributions are welcome. For substantial changes, open an issue first to discuss the approach. For a pull request, describe the change, include relevant tests, and run `./gradlew testDebugUnitTest` before submitting. Please keep contributions focused and follow the existing Kotlin and Jetpack Compose patterns.
+One A Run is maintained by [Luis Graciolli](https://github.com/luisfelipegraciolli). Contributions
+are welcome: open an issue to discuss substantial changes, then submit a pull request with a clear
+description and relevant tests. Run `./gradlew testDebugUnitTest` before submitting.
