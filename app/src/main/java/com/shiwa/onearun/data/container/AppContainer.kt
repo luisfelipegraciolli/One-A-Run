@@ -1,6 +1,7 @@
 package com.shiwa.onearun.data.container
 
 import android.content.Context
+import com.shiwa.onearun.BuildConfig
 import com.shiwa.onearun.data.location.LocationDataSource
 import com.shiwa.onearun.data.remote.MqttDataSource
 import com.shiwa.onearun.data.remote.api.RaceApiService
@@ -16,9 +17,8 @@ interface AppContainer {
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
-    // Esse é meu IP da rede local, caso queira testar o backend, use seu IP
-    //private val baseUrl = "http://seu_ip:8080/"
-    private val baseUrl = "http://192.168.1.20:8080/"
+
+    private val baseUrl = BuildConfig.BASE_URL
 
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
