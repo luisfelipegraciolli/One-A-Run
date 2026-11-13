@@ -26,7 +26,7 @@ sealed interface MqttConnectionState {
 }
 
 class MqttDataSource(
-    private val host: String = "test.mosquitto.org",
+    private val host: String = "broker.emqx.io",
     private val port: Int = 1883,
     private val clientIdPrefix: String = "corrida-android-"
 ) {

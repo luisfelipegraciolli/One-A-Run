@@ -1,4 +1,5 @@
 import java.io.FileInputStream
+import java.net.URI
 import java.util.Properties
 
 val localProperties = Properties().apply {
@@ -9,6 +10,21 @@ val localProperties = Properties().apply {
 }
 
 val baseUrl: String = localProperties.getProperty("BASE_URL") ?: System.getenv("BASE_URL") ?: ""
+
+val defaultHostFromUrl: String = try {
+    URI(baseUrl).host ?: "broker.emqx.io"
+} catch (e: Exception) {
+    println("Erro ao analisar URL base: $baseUrl $e")
+    "broker.emqx.io"
+}
+
+val mqttHost: String = localProperties.getProperty("MQTT_HOST")
+    ?: System.getenv("MQTT_HOST")
+    ?: defaultHostFromUrl
+
+val mqttPort: Int = (localProperties.getProperty("MQTT_PORT")
+    ?: System.getenv("MQTT_PORT")
+    ?: "1883").toIntOrNull() ?: 1883
 
 plugins {
     alias(libs.plugins.android.application)
@@ -33,6 +49,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
+        buildConfigField("String", "MQTT_HOST", "\"$mqttHost\"")
+        buildConfigField("int", "MQTT_PORT", "$mqttPort")
     }
 
     buildTypes {
@@ -60,7 +78,7 @@ android {
         }
     }
 
-    packagingOptions {
+    packaging {
         resources {
             excludes += listOf("META-INF/INDEX.LIST", "META-INF/io.netty.versions.properties")
         }

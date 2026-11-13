@@ -29,13 +29,48 @@ class LocationDataSource(
 ) {
     @SuppressLint("MissingPermission")
     fun getLocationUpdates(): Flow<LocationUpdate> = callbackFlow {
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000L)
-            .setMinUpdateIntervalMillis(500L)
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000L)
+            .setMinUpdateIntervalMillis(1000L)
+            .setMinUpdateDistanceMeters(3.0f)
             .build()
 
         val locationCallback = object : LocationCallback() {
+            private var lastEmittedLat: Double? = null
+            private var lastEmittedLon: Double? = null
+
             override fun onLocationResult(result: LocationResult) {
                 for (location in result.locations) {
+                    if (location.hasAccuracy() && location.accuracy > 20.0f) {
+                        Log.d(
+                            "LocationDataSource",
+                            "Ignorando localização imprecisa: acc=${location.accuracy}m"
+                        )
+                        continue
+                    }
+
+                    val lastLat = lastEmittedLat
+                    val lastLon = lastEmittedLon
+
+                    if (lastLat != null && lastLon != null) {
+                        val distanceResults = FloatArray(1)
+                        android.location.Location.distanceBetween(
+                            lastLat, lastLon,
+                            location.latitude, location.longitude,
+                            distanceResults
+                        )
+                        val deltaMeters = distanceResults[0]
+                        if (deltaMeters < 3.0f) {
+                            Log.d(
+                                "LocationDataSource",
+                                "Ignorando oscilação GPS: delta=${deltaMeters}m < 3.0m"
+                            )
+                            continue
+                        }
+                    }
+
+                    lastEmittedLat = location.latitude
+                    lastEmittedLon = location.longitude
+
                     val update = LocationUpdate(
                         latitude = location.latitude,
                         longitude = location.longitude,
@@ -44,7 +79,7 @@ class LocationDataSource(
                     )
                     Log.d(
                         "LocationDataSource",
-                        "Nova localização recebida: lat=${location.latitude}, lng=${location.longitude}"
+                        "Nova localização emitida: lat=${location.latitude}, lng=${location.longitude}, acc=${location.accuracy}m"
                     )
                     trySend(update)
                 }

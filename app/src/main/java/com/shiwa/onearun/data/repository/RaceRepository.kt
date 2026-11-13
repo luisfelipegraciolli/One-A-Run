@@ -151,11 +151,17 @@ class RaceRepositoryImpl(
             val service = raceApiService ?: throw IllegalStateException("RaceApiService não inicializado")
             val response = service.getRaceSession(sessionId)
             _currentSession.update { current ->
+                val currentRunnerId = current?.runnerId
+                val effectiveRunnerId = when {
+                    currentRunnerId != null -> currentRunnerId
+                    else -> null
+                }
                 (current ?: RaceSessionState()).copy(
                     sessionId = response.id,
                     joinCode = response.joinCode,
                     hostRunnerId = response.hostRunnerId,
                     guestRunnerId = response.guestRunnerId,
+                    runnerId = effectiveRunnerId ?: current?.runnerId,
                     distanceMeters = response.distanceMeters,
                     status = response.status,
                     details = response

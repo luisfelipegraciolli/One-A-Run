@@ -38,9 +38,9 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     override val raceRepository: RaceRepository by lazy {
         RaceRepositoryImpl(
             mqttDataSource = MqttDataSource(
-                host = "broker.emqx.io",
-                port = 1883,
-                clientIdPrefix = "corrida-app"
+                host = BuildConfig.MQTT_HOST,
+                port = BuildConfig.MQTT_PORT,
+                clientIdPrefix = "corrida-app-"
             ),
             raceApiService = raceApiService
         )
