@@ -53,6 +53,11 @@ class CreateRaceWaitingViewModel(
         watchJob = viewModelScope.launch {
             // O MQTT roda em uma coroutine à parte: se o broker demorar ou falhar, o polling não espera por ele
             val statusListener = launch {
+                try {
+                    repository.connectToBroker()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Falha ao conectar MQTT no waiting status", e)
+                }
                 repository.observeTopic("race/$sessionId/status")
                     .catch {
                         Log.w(

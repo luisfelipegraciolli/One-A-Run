@@ -3,6 +3,7 @@ package com.shiwa.onearun.data.location
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Looper
+import android.util.Log
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -41,6 +42,10 @@ class LocationDataSource(
                         timestamp = location.time,
                         accuracy = location.accuracy
                     )
+                    Log.d(
+                        "LocationDataSource",
+                        "Nova localização recebida: lat=${location.latitude}, lng=${location.longitude}"
+                    )
                     trySend(update)
                 }
             }
@@ -50,7 +55,10 @@ class LocationDataSource(
             locationRequest,
             locationCallback,
             Looper.getMainLooper()
-        )
+        ).addOnFailureListener { e ->
+            Log.e("LocationDataSource", "Erro ao solicitar atualizações de localização GPS", e)
+            close(e)
+        }
 
         awaitClose {
             fusedLocationClient.removeLocationUpdates(locationCallback)
