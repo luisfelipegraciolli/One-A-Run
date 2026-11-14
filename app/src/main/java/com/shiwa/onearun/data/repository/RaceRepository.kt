@@ -161,7 +161,7 @@ class RaceRepositoryImpl(
                     joinCode = response.joinCode,
                     hostRunnerId = response.hostRunnerId,
                     guestRunnerId = response.guestRunnerId,
-                    runnerId = effectiveRunnerId ?: current?.runnerId,
+                    runnerId = effectiveRunnerId,
                     distanceMeters = response.distanceMeters,
                     status = response.status,
                     details = response

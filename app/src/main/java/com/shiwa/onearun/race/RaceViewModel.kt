@@ -3,12 +3,14 @@ package com.shiwa.onearun.race
 import android.annotation.SuppressLint
 import android.os.SystemClock
 import android.util.Log
+import androidx.annotation.Keep
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import com.shiwa.onearun.OneARunApplication
 import com.shiwa.onearun.data.location.LocationDataSource
 import com.shiwa.onearun.data.repository.RaceRepository
@@ -40,36 +42,39 @@ data class RaceUiState(
     val errorMessage: String? = null
 )
 
+@Keep
 data class ProgressPoint(
-    val distanceMeters: Double,
-    val timestampMillis: Long
+    @SerializedName("distanceMeters") val distanceMeters: Double,
+    @SerializedName("timestampMillis") val timestampMillis: Long
 )
 
+@Keep
 data class MqttProgressDto(
-    val sessionId: String? = null,
-    val runnerId: String? = null,
-    val distanceMeters: Double = 0.0,
-    val opponentRunnerId: String? = null,
-    val opponentDistanceMeters: Double = 0.0,
-    val targetDistanceMeters: Double = 400.0,
-    val remainingMeters: Double? = null,
-    val opponentRemainingMeters: Double? = null,
-    val finished: Boolean = false,
-    val opponentFinished: Boolean = false,
-    val sessionStatus: String? = null,
-    val winnerRunnerId: String? = null,
-    val won: Boolean? = null
+    @SerializedName("sessionId") val sessionId: String? = null,
+    @SerializedName("runnerId") val runnerId: String? = null,
+    @SerializedName("distanceMeters") val distanceMeters: Double = 0.0,
+    @SerializedName("opponentRunnerId") val opponentRunnerId: String? = null,
+    @SerializedName("opponentDistanceMeters") val opponentDistanceMeters: Double = 0.0,
+    @SerializedName("targetDistanceMeters") val targetDistanceMeters: Double = 400.0,
+    @SerializedName("remainingMeters") val remainingMeters: Double? = null,
+    @SerializedName("opponentRemainingMeters") val opponentRemainingMeters: Double? = null,
+    @SerializedName("finished") val finished: Boolean = false,
+    @SerializedName("opponentFinished") val opponentFinished: Boolean = false,
+    @SerializedName("sessionStatus") val sessionStatus: String? = null,
+    @SerializedName("winnerRunnerId") val winnerRunnerId: String? = null,
+    @SerializedName("won") val won: Boolean? = null
 )
 
+@Keep
 data class MqttResultDto(
-    val sessionId: String? = null,
-    val sessionStatus: String? = null,
-    val targetDistanceMeters: Double? = null,
-    val winnerRunnerId: String? = null,
-    val hostRunnerId: String? = null,
-    val hostDistanceMeters: Double? = null,
-    val guestRunnerId: String? = null,
-    val guestDistanceMeters: Double? = null
+    @SerializedName("sessionId") val sessionId: String? = null,
+    @SerializedName("sessionStatus") val sessionStatus: String? = null,
+    @SerializedName("targetDistanceMeters") val targetDistanceMeters: Double? = null,
+    @SerializedName("winnerRunnerId") val winnerRunnerId: String? = null,
+    @SerializedName("hostRunnerId") val hostRunnerId: String? = null,
+    @SerializedName("hostDistanceMeters") val hostDistanceMeters: Double? = null,
+    @SerializedName("guestRunnerId") val guestRunnerId: String? = null,
+    @SerializedName("guestDistanceMeters") val guestDistanceMeters: Double? = null
 )
 
 object RaceUtils {

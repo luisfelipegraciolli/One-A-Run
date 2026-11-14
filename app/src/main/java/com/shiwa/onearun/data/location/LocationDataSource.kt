@@ -4,21 +4,24 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Looper
 import android.util.Log
+import androidx.annotation.Keep
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
+@Keep
 data class LocationUpdate(
-    val latitude: Double,
-    val longitude: Double,
-    val timestamp: Long,
-    val accuracy: Float
+    @SerializedName("latitude") val latitude: Double,
+    @SerializedName("longitude") val longitude: Double,
+    @SerializedName("timestamp") val timestamp: Long,
+    @SerializedName("accuracy") val accuracy: Float
 )
 
 class LocationDataSource(
@@ -40,7 +43,7 @@ class LocationDataSource(
 
             override fun onLocationResult(result: LocationResult) {
                 for (location in result.locations) {
-                    if (location.hasAccuracy() && location.accuracy > 20.0f) {
+                    if (location.hasAccuracy() && location.accuracy > 35.0f) {
                         Log.d(
                             "LocationDataSource",
                             "Ignorando localização imprecisa: acc=${location.accuracy}m"

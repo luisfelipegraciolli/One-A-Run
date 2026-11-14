@@ -9,7 +9,8 @@ val localProperties = Properties().apply {
     }
 }
 
-val baseUrl: String = localProperties.getProperty("BASE_URL") ?: System.getenv("BASE_URL") ?: ""
+val baseUrl: String =
+    localProperties.getProperty("BASE_URL") ?: System.getenv("BASE_URL") ?: "broker.emqx.io"
 
 val defaultHostFromUrl: String = try {
     URI(baseUrl).host ?: "broker.emqx.io"
@@ -44,7 +45,7 @@ android {
         minSdk = 24
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.0.1-alpha"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -55,9 +56,12 @@ android {
 
     buildTypes {
         release {
-            optimization {
-                enable = false
-            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
     compileOptions {
@@ -68,14 +72,6 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-        }
     }
 
     packaging {
@@ -108,6 +104,8 @@ dependencies {
     implementation(libs.play.services.location)
 
     testImplementation(libs.junit)
+    testImplementation("io.mockk:mockk:1.13.12")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
