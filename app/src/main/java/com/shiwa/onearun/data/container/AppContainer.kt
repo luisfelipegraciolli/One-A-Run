@@ -32,7 +32,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val locationDataSource: LocationDataSource by lazy {
-        LocationDataSource(context)
+        LocationDataSource(context.applicationContext)
     }
 
     override val raceRepository: RaceRepository by lazy {

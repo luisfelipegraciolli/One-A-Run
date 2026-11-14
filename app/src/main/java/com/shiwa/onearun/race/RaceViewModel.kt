@@ -1,6 +1,5 @@
 package com.shiwa.onearun.race
 
-import android.annotation.SuppressLint
 import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.Keep
@@ -202,9 +201,12 @@ class RaceViewModel(
                 val opponentName =
                     if (!rawOpponentName.isNullOrBlank()) rawOpponentName else "Adversário"
 
-                _uiState.update {
-                    it.copy(
+                val targetDistance = details.distanceMeters.toDouble()
+
+                _uiState.update { current ->
+                    current.copy(
                         myName = myName,
+                        targetDistanceMeters = targetDistance,
                         opponentName = opponentName
                     )
                 }
@@ -218,7 +220,7 @@ class RaceViewModel(
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
             while (!_uiState.value.sessionFinished) {
-                val elapsed = (timeProvider() - startTimeMillis).coerceAtLeast(0L)
+                val elapsed = myFinishMillis ?: (timeProvider() - startTimeMillis).coerceAtLeast(0L)
                 val timeStr = RaceUtils.formatTime(elapsed)
                 _uiState.update { it.copy(timeText = timeStr) }
                 delay(500.milliseconds)
@@ -255,9 +257,14 @@ class RaceViewModel(
             val dto = gson.fromJson(json, MqttProgressDto::class.java) ?: return
             val now = timeProvider()
 
-            progressHistory.add(ProgressPoint(dto.distanceMeters, now))
+            val historyCopy: List<ProgressPoint>
+            synchronized(progressHistory) {
+                progressHistory.add(ProgressPoint(dto.distanceMeters, now))
+                progressHistory.removeAll { it.timestampMillis < now - 60_000L }
+                historyCopy = progressHistory.toList()
+            }
 
-            val currentPaceSecPerKm = RaceUtils.calculatePace(progressHistory, now)
+            val currentPaceSecPerKm = RaceUtils.calculatePace(historyCopy, now)
             if (currentPaceSecPerKm != null) {
                 val prevBest = bestPaceSecPerKm
                 if (prevBest == null || currentPaceSecPerKm < prevBest) {
@@ -268,7 +275,7 @@ class RaceViewModel(
 
             val finishedNow = dto.finished
             if (finishedNow && myFinishMillis == null) {
-                myFinishMillis = now - startTimeMillis
+                myFinishMillis = (now - startTimeMillis).coerceAtLeast(0L)
             }
 
             val sessionIsFinished = (dto.sessionStatus == "FINISHED")
@@ -314,13 +321,23 @@ class RaceViewModel(
             val sessionIsFinished = (dto.sessionStatus == "FINISHED")
 
             _uiState.update { current ->
+                val isHost = (runnerId == dto.hostRunnerId)
+                val finalMyDist = if (isHost) dto.hostDistanceMeters else dto.guestDistanceMeters
+                val finalOppDist = if (isHost) dto.guestDistanceMeters else dto.hostDistanceMeters
+
+                val myDist = finalMyDist ?: current.myDistanceMeters
+                val oppDist = finalOppDist ?: current.opponentDistanceMeters
+
                 val isFirst = RaceUtils.calculateIsFirstPlace(
-                    current.myDistanceMeters,
-                    current.opponentDistanceMeters,
+                    myDist,
+                    oppDist,
                     wonValue,
                     dto.winnerRunnerId
                 )
                 current.copy(
+                    myDistanceMeters = myDist,
+                    opponentDistanceMeters = oppDist,
+                    targetDistanceMeters = dto.targetDistanceMeters ?: current.targetDistanceMeters,
                     isFirstPlace = isFirst,
                     sessionFinished = sessionIsFinished,
                     isWaitingOpponentToFinish = current.isFinished && !sessionIsFinished
@@ -362,20 +379,29 @@ class RaceViewModel(
         locationJob = null
     }
 
-    @SuppressLint("EmptySuperCall")
     override fun onCleared() {
-        super.onCleared()
         stopLocationTracking()
+        timerJob?.cancel()
+        progressJob?.cancel()
+        resultJob?.cancel()
     }
 
     private fun finishRace(wonValue: Boolean?) {
-        if (isRaceFinishedRecorded) return
+        if (isRaceFinishedRecorded) {
+            if (wonValue != null && repository.raceStats.value?.won == null) {
+                val currentStats = repository.raceStats.value
+                if (currentStats != null) {
+                    repository.updateRaceStats(currentStats.copy(won = wonValue))
+                }
+            }
+            return
+        }
         isRaceFinishedRecorded = true
 
         timerJob?.cancel()
         stopLocationTracking()
 
-        val totalDuration = timeProvider() - startTimeMillis
+        val totalDuration = (timeProvider() - startTimeMillis).coerceAtLeast(0L)
         val currentState = _uiState.value
 
         val stats = RaceStats(

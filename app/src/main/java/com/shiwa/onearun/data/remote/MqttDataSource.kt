@@ -56,16 +56,16 @@ class MqttDataSource(
                 .serverPort(port)
                 .buildAsync()
 
-            client = mqttClient
-
             val connAck = mqttClient.toBlocking().connectWith()
                 .cleanStart(true)
                 .send()
 
+            client = mqttClient
             Log.d(tag, "MQTT Connected successfully to $host:$port! ConnAck: $connAck")
             _connectionState.value = MqttConnectionState.Connected
 
         } catch (e: Exception) {
+            client = null
             val errMsg = e.localizedMessage ?: "Connect exception"
             Log.e(tag, "Exception during MQTT connect to $host:$port: $errMsg", e)
             _connectionState.value = MqttConnectionState.Error(errMsg)
@@ -90,8 +90,13 @@ class MqttDataSource(
                     _incomingMessages.tryEmit(message)
                 }
                 .send()
-
-            Log.d(tag, "Subscribed successfully to topic [$topic]")
+                .whenComplete { _, error ->
+                    if (error != null) {
+                        Log.e(tag, "Failed to subscribe to [$topic]", error)
+                    } else {
+                        Log.d(tag, "Subscribed successfully to topic [$topic]")
+                    }
+                }
         } catch (e: Exception) {
             Log.e(tag, "Exception during subscribe to [$topic]", e)
         }
@@ -121,7 +126,9 @@ class MqttDataSource(
             }
 
         awaitClose {
-            activeClient.unsubscribeWith().topicFilter(topic).send()
+            runCatching {
+                activeClient.unsubscribeWith().topicFilter(topic).send()
+            }
         }
     }
 
@@ -153,7 +160,11 @@ class MqttDataSource(
     }
 
     suspend fun publishQos0(topic: String, payload: String) = withContext(Dispatchers.IO) {
-        val activeClient = client ?: return@withContext
+        val activeClient = client
+        if (activeClient == null) {
+            Log.w(tag, "Cannot publishQos0 to [$topic]: MQTT client is null")
+            return@withContext
+        }
         try {
             activeClient.publishWith()
                 .topic(topic)
@@ -172,8 +183,9 @@ class MqttDataSource(
             client?.toBlocking()?.disconnect()
         } catch (e: Exception) {
             Log.e(tag, "Exception during disconnect", e)
+        } finally {
+            _connectionState.value = MqttConnectionState.Disconnected
+            client = null
         }
-        _connectionState.value = MqttConnectionState.Disconnected
-        client = null
     }
 }

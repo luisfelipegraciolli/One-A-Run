@@ -91,6 +91,7 @@ class RaceRepositoryImpl(
         runnerId: String,
         update: LocationUpdate
     ) {
+        if (sessionId.isBlank() || runnerId.isBlank()) return
         val topic = "race/$sessionId/runner/$runnerId/location"
         val payload = gson.toJson(update)
         mqttDataSource.publishQos0(topic, payload)
@@ -118,7 +119,9 @@ class RaceRepositoryImpl(
 
     override suspend fun createRaceApi(race: RaceDto): Result<RaceDto> {
         return runCatching {
-            raceApiService?.createRace(race) ?: race
+            val service =
+                raceApiService ?: throw IllegalStateException("RaceApiService não inicializado")
+            service.createRace(race)
         }
     }
 

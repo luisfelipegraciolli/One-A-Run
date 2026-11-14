@@ -89,17 +89,24 @@ class LocationDataSource(
             }
         }
 
-        fusedLocationClient.requestLocationUpdates(
-            locationRequest,
-            locationCallback,
-            Looper.getMainLooper()
-        ).addOnFailureListener { e ->
-            Log.e("LocationDataSource", "Erro ao solicitar atualizações de localização GPS", e)
+        try {
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                Looper.getMainLooper()
+            ).addOnFailureListener { e ->
+                Log.e("LocationDataSource", "Erro ao solicitar atualizações de localização GPS", e)
+                close(e)
+            }
+        } catch (e: Exception) {
+            Log.e("LocationDataSource", "Exceção ao iniciar atualizações de localização GPS", e)
             close(e)
         }
 
         awaitClose {
-            fusedLocationClient.removeLocationUpdates(locationCallback)
+            runCatching {
+                fusedLocationClient.removeLocationUpdates(locationCallback)
+            }
         }
     }
 }

@@ -1,16 +1,16 @@
 package com.shiwa.onearun.data.remote.api
 
-import retrofit2.Response
+import com.google.gson.annotations.SerializedName
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 
 data class RaceDto(
-    val id: String? = null,
-    val name: String? = null,
-    val distanceMeters: Int? = null,
-    val status: String? = null
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("distanceMeters") val distanceMeters: Int? = null,
+    @SerializedName("status") val status: String? = null
 )
 
 interface RaceApiService {
