@@ -6,6 +6,7 @@ import com.hivemq.client.mqtt.datatypes.MqttQos
 import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient
 import com.hivemq.client.mqtt.mqtt5.Mqtt5Client
 import com.hivemq.client.mqtt.mqtt5.message.publish.Mqtt5Publish
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -32,10 +35,11 @@ class MqttDataSource(
     private val host: String = "broker.emqx.io",
     private val port: Int = 8883, // Porta TLS: evita bloqueios/drops de CGNAT em redes 4G/5G
     private val useSsl: Boolean = true,
-    private val clientId: String = "onearun-android-${UUID.randomUUID()}" // ID fixo por instância
+    private val clientId: String = "onearun-android-${UUID.randomUUID()}", // ID fixo por instância
 ) {
     private val tag = "MqttDataSource"
     private var client: Mqtt5AsyncClient? = null
+    private val connectMutex = Mutex()
 
     private val _connectionState = MutableStateFlow<MqttConnectionState>(MqttConnectionState.Disconnected)
     val connectionState: StateFlow<MqttConnectionState> = _connectionState.asStateFlow()
@@ -43,59 +47,78 @@ class MqttDataSource(
     private val _incomingMessages = MutableSharedFlow<String>(extraBufferCapacity = 64)
     val incomingMessages: SharedFlow<String> = _incomingMessages.asSharedFlow()
 
+    // Porta 1883 é Plaintext TCP (sem TLS). Se a porta for 1883, desativa SSL automaticamente para evitar ClosedChannelException.
+    private val effectiveUseSsl: Boolean get() = port != 1883 && useSsl
+
     @SuppressLint("CheckResult")
     suspend fun connect() = withContext(Dispatchers.IO) {
-        if (_connectionState.value == MqttConnectionState.Connected && client != null) {
-            return@withContext
-        }
-
-        _connectionState.value = MqttConnectionState.Connecting
-        Log.d(tag, "Connecting to $host:$port with clientId $clientId...")
-
-        try {
-            val builder = Mqtt5Client.builder()
-                .identifier(clientId)
-                .serverHost(host)
-                .serverPort(port)
-                // Reconexão automática nativa do HiveMQ quando o 4G/Wi-Fi oscilar
-                .automaticReconnect()
-                .initialDelay(1, TimeUnit.SECONDS)
-                .maxDelay(15, TimeUnit.SECONDS)
-                .applyAutomaticReconnect()
-                .addConnectedListener {
-                    Log.d(tag, "MQTT Connected / Reconnected!")
-                    _connectionState.value = MqttConnectionState.Connected
-                }
-                .addDisconnectedListener { context ->
-                    Log.w(tag, "MQTT Disconnected: ${context.cause.message}")
-                    _connectionState.value = MqttConnectionState.Disconnected
-                }
-
-            if (useSsl) {
-                builder.sslWithDefaultConfig()
+        connectMutex.withLock {
+            if (_connectionState.value == MqttConnectionState.Connected && client != null) {
+                return@withContext
             }
 
-            val mqttClient = builder.buildAsync()
+            _connectionState.value = MqttConnectionState.Connecting
+            Log.d(
+                tag,
+                "Connecting to $host:$port (useSsl=$effectiveUseSsl) with clientId $clientId..."
+            )
 
-            mqttClient.toBlocking().connectWith()
-                .cleanStart(false)
-                // Mantém a sessão e inscrições ativas no broker por 5 min durante quedas de rede
-                .sessionExpiryInterval(300)
-                .keepAlive(20) // Ping a cada 20s para evitar timeout de NAT em redes móveis
-                .send()
+            try {
+                val builder = Mqtt5Client.builder()
+                    .identifier(clientId)
+                    .serverHost(host)
+                    .serverPort(port)
+                    // Reconexão automática nativa do HiveMQ quando o 4G/Wi-Fi oscilar
+                    .automaticReconnect()
+                    .initialDelay(1, TimeUnit.SECONDS)
+                    .maxDelay(15, TimeUnit.SECONDS)
+                    .applyAutomaticReconnect()
+                    .addConnectedListener {
+                        Log.d(tag, "MQTT Connected / Reconnected!")
+                        _connectionState.value = MqttConnectionState.Connected
+                    }
+                    .addDisconnectedListener { context ->
+                        Log.w(tag, "MQTT Disconnected: ${context.cause.message}")
+                        _connectionState.value = MqttConnectionState.Disconnected
+                    }
 
-            client = mqttClient
-            _connectionState.value = MqttConnectionState.Connected
+                if (effectiveUseSsl) {
+                    builder.sslWithDefaultConfig()
+                }
 
-        } catch (e: Exception) {
-            client = null
-            val errMsg = e.localizedMessage ?: "Connect exception"
-            Log.e(tag, "Exception during MQTT connect to $host:$port: $errMsg", e)
-            _connectionState.value = MqttConnectionState.Error(errMsg)
+                val mqttClient = builder.buildAsync()
+
+                mqttClient.toBlocking().connectWith()
+                    .cleanStart(false)
+                    // Mantém a sessão e inscrições ativas no broker por 5 min durante quedas de rede
+                    .sessionExpiryInterval(300)
+                    .keepAlive(20) // Ping a cada 20s para evitar timeout de NAT em redes móveis
+                    .send()
+
+                client = mqttClient
+                _connectionState.value = MqttConnectionState.Connected
+
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                client = null
+                val errMsg = e.localizedMessage ?: "Connect exception"
+                Log.e(tag, "Exception during MQTT connect to $host:$port: $errMsg", e)
+                _connectionState.value = MqttConnectionState.Error(errMsg)
+                throw e
+            }
         }
     }
 
     fun observeTopic(topic: String): Flow<String> = callbackFlow {
+        if (client == null || _connectionState.value != MqttConnectionState.Connected) {
+            try {
+                connect()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.w(tag, "Connect attempt before observeTopic failed for [$topic]", e)
+            }
+        }
+
         val activeClient = client
         if (activeClient == null) {
             close(IllegalStateException("MQTT client is null"))
@@ -127,7 +150,12 @@ class MqttDataSource(
 
     suspend fun publish(topic: String, payload: String) = withContext(Dispatchers.IO) {
         if (_connectionState.value != MqttConnectionState.Connected || client == null) {
-            connect()
+            try {
+                connect()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.w(tag, "Connect attempt before publish failed for [$topic]", e)
+            }
         }
 
         val activeClient = client ?: return@withContext
@@ -138,11 +166,21 @@ class MqttDataSource(
                 .payload(payload.toByteArray(StandardCharsets.UTF_8))
                 .send()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e(tag, "Exception during publish to [$topic]", e)
         }
     }
 
     suspend fun subscribe(topic: String) = withContext(Dispatchers.IO) {
+        if (client == null || _connectionState.value != MqttConnectionState.Connected) {
+            try {
+                connect()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.w(tag, "Connect attempt before subscribe failed for [$topic]", e)
+            }
+        }
+
         val activeClient = client
         if (activeClient == null) {
             Log.w(tag, "Cannot subscribe to [$topic]: MQTT client is null")
@@ -168,13 +206,19 @@ class MqttDataSource(
                     }
                 }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e(tag, "Exception during subscribe to [$topic]", e)
         }
     }
 
     suspend fun publishQos0(topic: String, payload: String) = withContext(Dispatchers.IO) {
-        if (client == null) {
-            connect()
+        if (client == null || _connectionState.value != MqttConnectionState.Connected) {
+            try {
+                connect()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.w(tag, "Connect attempt before publishQos0 failed for [$topic]", e)
+            }
         }
         val activeClient = client ?: return@withContext
         try {
@@ -184,20 +228,24 @@ class MqttDataSource(
                 .payload(payload.toByteArray(StandardCharsets.UTF_8))
                 .send()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e(tag, "Exception during async publish to [$topic]", e)
         }
     }
 
     suspend fun disconnect() = withContext(Dispatchers.IO) {
-        try {
-            client?.toBlocking()?.disconnectWith()
-                ?.sessionExpiryInterval(0) // Encerra a sessão limpa ao sair da tela
-                ?.send()
-        } catch (e: Exception) {
-            Log.e(tag, "Exception during disconnect", e)
-        } finally {
-            _connectionState.value = MqttConnectionState.Disconnected
-            client = null
+        connectMutex.withLock {
+            try {
+                client?.toBlocking()?.disconnectWith()
+                    ?.sessionExpiryInterval(0) // Encerra a sessão limpa ao sair da tela
+                    ?.send()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.e(tag, "Exception during disconnect", e)
+            } finally {
+                _connectionState.value = MqttConnectionState.Disconnected
+                client = null
+            }
         }
     }
 }

@@ -177,6 +177,13 @@ class RaceViewModel(
     private fun startRaceSession(sessionId: String, runnerId: String) {
         fetchRunnerNames(sessionId, runnerId)
         startTimer()
+        viewModelScope.launch {
+            try {
+                repository.connectToBroker()
+            } catch (e: Exception) {
+                Log.w(TAG, "Falha ao conectar MQTT no início da corrida", e)
+            }
+        }
         observeProgress(sessionId, runnerId)
         observeResult(sessionId, runnerId)
         startLocationTracking()
