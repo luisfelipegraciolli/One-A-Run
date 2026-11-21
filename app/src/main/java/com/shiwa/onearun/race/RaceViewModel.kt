@@ -177,16 +177,9 @@ class RaceViewModel(
     private fun startRaceSession(sessionId: String, runnerId: String) {
         fetchRunnerNames(sessionId, runnerId)
         startTimer()
-        viewModelScope.launch {
-            try {
-                repository.connectToBroker()
-            } catch (e: Exception) {
-                Log.e(TAG, "Erro ao conectar ao broker MQTT", e)
-            }
-            observeProgress(sessionId, runnerId)
-            observeResult(sessionId, runnerId)
-            startLocationTracking()
-        }
+        observeProgress(sessionId, runnerId)
+        observeResult(sessionId, runnerId)
+        startLocationTracking()
     }
 
     private fun fetchRunnerNames(sessionId: String, runnerId: String) {
@@ -230,13 +223,28 @@ class RaceViewModel(
 
     private fun observeProgress(sessionId: String, runnerId: String) {
         progressJob?.cancel()
+
         progressJob = viewModelScope.launch {
             val topic = "race/$sessionId/runner/$runnerId/progress"
-            repository.observeTopic(topic)
-                .catch { Log.w(TAG, "Erro ao assinar progresso da corrida", it) }
-                .collect { json ->
-                    handleProgressMessage(json, runnerId)
+
+            var retryDelay = 1_000L
+
+            while (!_uiState.value.sessionFinished) {
+                try {
+                    repository.observeTopic(topic).collect { json ->
+                        retryDelay = 1_000L
+                        handleProgressMessage(json, runnerId)
+                    }
+
+                    Log.w(TAG, "Fluxo MQTT encerrado: $topic")
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Erro no fluxo MQTT: $topic", e)
                 }
+
+                delay(retryDelay)
+                retryDelay = (retryDelay * 2).coerceAtMost(30_000L)
+            }
         }
     }
 
@@ -244,11 +252,45 @@ class RaceViewModel(
         resultJob?.cancel()
         resultJob = viewModelScope.launch {
             val topic = "race/$sessionId/result"
-            repository.observeTopic(topic)
-                .catch { Log.w(TAG, "Erro ao assinar resultado da corrida", it) }
-                .collect { json ->
-                    handleResultMessage(json, runnerId)
+            var retryDelay = 1_000L
+
+            while (!_uiState.value.sessionFinished) {
+                try {
+                    repository.observeTopic(topic).collect { json ->
+                        retryDelay = 1_000L
+                        handleResultMessage(json, runnerId)
+                    }
+                } catch (e: Exception) {
+                    Log.w(
+                        TAG,
+                        "Erro/queda ao assinar resultado da corrida, tentando novamente...",
+                        e
+                    )
                 }
+
+                if (_uiState.value.sessionFinished) break
+
+                // Fallback via HTTP caso o resultado tenha sido publicado enquanto o MQTT estava offline
+                syncSessionStateFallback(sessionId, runnerId)
+
+                delay(retryDelay)
+                retryDelay = (retryDelay * 2).coerceAtMost(15_000L)
+            }
+        }
+    }
+
+    private suspend fun syncSessionStateFallback(sessionId: String, runnerId: String) {
+        repository.getRaceSession(sessionId).onSuccess { details ->
+            if (details.status == "FINISHED") {
+                val wonValue = details.winnerRunnerId?.let { it == runnerId }
+                _uiState.update {
+                    it.copy(
+                        sessionFinished = true,
+                        isWaitingOpponentToFinish = false
+                    )
+                }
+                finishRace(wonValue)
+            }
         }
     }
 
@@ -366,7 +408,9 @@ class RaceViewModel(
                 ?.collect { update ->
                     val state = _uiState.value
                     if (!state.isFinished && !state.sessionFinished) {
-                        repository.publishLocation(sessionId, runnerId, update)
+                        runCatching {
+                            repository.publishLocation(sessionId, runnerId, update)
+                        }
                     } else {
                         stopLocationTracking()
                     }

@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 sealed interface MqttConnectionState {
     object Disconnected : MqttConnectionState
@@ -27,8 +29,9 @@ sealed interface MqttConnectionState {
 
 class MqttDataSource(
     private val host: String = "broker.emqx.io",
-    private val port: Int = 1883,
-    private val clientIdPrefix: String = "corrida-android-"
+    private val port: Int = 8883, // Porta TLS: evita bloqueios/drops de CGNAT em redes 4G/5G
+    private val useSsl: Boolean = true,
+    private val clientId: String = "onearun-android-${UUID.randomUUID()}" // ID fixo por instância
 ) {
     private val tag = "MqttDataSource"
     private var client: Mqtt5AsyncClient? = null
@@ -41,27 +44,45 @@ class MqttDataSource(
 
     suspend fun connect() = withContext(Dispatchers.IO) {
         if (_connectionState.value == MqttConnectionState.Connected && client != null) {
-            Log.d(tag, "Already connected to $host:$port")
             return@withContext
         }
 
         _connectionState.value = MqttConnectionState.Connecting
-        val clientId = clientIdPrefix + System.currentTimeMillis()
         Log.d(tag, "Connecting to $host:$port with clientId $clientId...")
 
         try {
-            val mqttClient = Mqtt5Client.builder()
+            val builder = Mqtt5Client.builder()
                 .identifier(clientId)
                 .serverHost(host)
                 .serverPort(port)
-                .buildAsync()
+                // Reconexão automática nativa do HiveMQ quando o 4G/Wi-Fi oscilar
+                .automaticReconnect()
+                .initialDelay(1, TimeUnit.SECONDS)
+                .maxDelay(15, TimeUnit.SECONDS)
+                .applyAutomaticReconnect()
+                .addConnectedListener {
+                    Log.d(tag, "MQTT Connected / Reconnected!")
+                    _connectionState.value = MqttConnectionState.Connected
+                }
+                .addDisconnectedListener { context ->
+                    Log.w(tag, "MQTT Disconnected: ${context.cause.message}")
+                    _connectionState.value = MqttConnectionState.Disconnected
+                }
 
-            val connAck = mqttClient.toBlocking().connectWith()
-                .cleanStart(true)
+            if (useSsl) {
+                builder.sslWithDefaultConfig()
+            }
+
+            val mqttClient = builder.buildAsync()
+
+            mqttClient.toBlocking().connectWith()
+                .cleanStart(false)
+                // Mantém a sessão e inscrições ativas no broker por 5 min durante quedas de rede
+                .sessionExpiryInterval(300)
+                .keepAlive(20) // Ping a cada 20s para evitar timeout de NAT em redes móveis
                 .send()
 
             client = mqttClient
-            Log.d(tag, "MQTT Connected successfully to $host:$port! ConnAck: $connAck")
             _connectionState.value = MqttConnectionState.Connected
 
         } catch (e: Exception) {
@@ -69,36 +90,6 @@ class MqttDataSource(
             val errMsg = e.localizedMessage ?: "Connect exception"
             Log.e(tag, "Exception during MQTT connect to $host:$port: $errMsg", e)
             _connectionState.value = MqttConnectionState.Error(errMsg)
-        }
-    }
-
-    suspend fun subscribe(topic: String) = withContext(Dispatchers.IO) {
-        val activeClient = client
-        if (activeClient == null) {
-            Log.w(tag, "Cannot subscribe to [$topic]: MQTT client is null")
-            return@withContext
-        }
-
-        Log.d(tag, "Subscribing to topic [$topic]...")
-        try {
-            activeClient.subscribeWith()
-                .topicFilter(topic)
-                .qos(MqttQos.AT_LEAST_ONCE)
-                .callback { publish: Mqtt5Publish ->
-                    val message = String(publish.payloadAsBytes, StandardCharsets.UTF_8)
-                    Log.d(tag, "Received message on [$topic]: $message")
-                    _incomingMessages.tryEmit(message)
-                }
-                .send()
-                .whenComplete { _, error ->
-                    if (error != null) {
-                        Log.e(tag, "Failed to subscribe to [$topic]", error)
-                    } else {
-                        Log.d(tag, "Subscribed successfully to topic [$topic]")
-                    }
-                }
-        } catch (e: Exception) {
-            Log.e(tag, "Exception during subscribe to [$topic]", e)
         }
     }
 
@@ -132,43 +123,32 @@ class MqttDataSource(
         }
     }
 
-
     suspend fun publish(topic: String, payload: String) = withContext(Dispatchers.IO) {
         if (_connectionState.value != MqttConnectionState.Connected || client == null) {
-            Log.d(tag, "Client not connected before publish. Attempting connect first...")
             connect()
         }
 
-        val activeClient = client
-        if (activeClient == null) {
-            Log.w(tag, "Cannot publish to [$topic]: MQTT client is null")
-            return@withContext
-        }
-
-        Log.d(tag, "Publishing to [$topic]: $payload")
+        val activeClient = client ?: return@withContext
         try {
-            val publishResult = activeClient.toBlocking().publishWith()
+            activeClient.toBlocking().publishWith()
                 .topic(topic)
                 .qos(MqttQos.AT_LEAST_ONCE)
                 .payload(payload.toByteArray(StandardCharsets.UTF_8))
                 .send()
-
-            Log.d(tag, "Successfully published message to [$topic]: '$payload'. Result: $publishResult")
         } catch (e: Exception) {
             Log.e(tag, "Exception during publish to [$topic]", e)
         }
     }
 
     suspend fun publishQos0(topic: String, payload: String) = withContext(Dispatchers.IO) {
-        val activeClient = client
-        if (activeClient == null) {
-            Log.w(tag, "Cannot publishQos0 to [$topic]: MQTT client is null")
-            return@withContext
+        if (client == null) {
+            connect()
         }
+        val activeClient = client ?: return@withContext
         try {
             activeClient.publishWith()
                 .topic(topic)
-                .qos(MqttQos.AT_MOST_ONCE)
+                .qos(MqttQos.AT_MOST_ONCE) // QoS 0 real: ideal para telemetria contínua de GPS
                 .payload(payload.toByteArray(StandardCharsets.UTF_8))
                 .send()
         } catch (e: Exception) {
@@ -176,11 +156,11 @@ class MqttDataSource(
         }
     }
 
-
     suspend fun disconnect() = withContext(Dispatchers.IO) {
-        Log.d(tag, "Disconnecting MQTT client...")
         try {
-            client?.toBlocking()?.disconnect()
+            client?.toBlocking()?.disconnectWith()
+                ?.sessionExpiryInterval(0) // Encerra a sessão limpa ao sair da tela
+                ?.send()
         } catch (e: Exception) {
             Log.e(tag, "Exception during disconnect", e)
         } finally {

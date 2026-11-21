@@ -32,9 +32,9 @@ class LocationDataSource(
 ) {
     @SuppressLint("MissingPermission")
     fun getLocationUpdates(): Flow<LocationUpdate> = callbackFlow {
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000L)
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1500L)
             .setMinUpdateIntervalMillis(1000L)
-            .setMinUpdateDistanceMeters(3.0f)
+            .setMinUpdateDistanceMeters(2.0f)
             .build()
 
         val locationCallback = object : LocationCallback() {
@@ -43,7 +43,7 @@ class LocationDataSource(
 
             override fun onLocationResult(result: LocationResult) {
                 for (location in result.locations) {
-                    if (location.hasAccuracy() && location.accuracy > 35.0f) {
+                    if (location.hasAccuracy() && location.accuracy > 65.0f) {
                         Log.d(
                             "LocationDataSource",
                             "Ignorando localização imprecisa: acc=${location.accuracy}m"
