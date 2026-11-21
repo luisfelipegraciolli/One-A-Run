@@ -1,5 +1,6 @@
 package com.shiwa.onearun.data.remote
 
+import android.annotation.SuppressLint
 import android.util.Log
 import com.hivemq.client.mqtt.datatypes.MqttQos
 import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient
@@ -42,6 +43,7 @@ class MqttDataSource(
     private val _incomingMessages = MutableSharedFlow<String>(extraBufferCapacity = 64)
     val incomingMessages: SharedFlow<String> = _incomingMessages.asSharedFlow()
 
+    @SuppressLint("CheckResult")
     suspend fun connect() = withContext(Dispatchers.IO) {
         if (_connectionState.value == MqttConnectionState.Connected && client != null) {
             return@withContext
@@ -137,6 +139,36 @@ class MqttDataSource(
                 .send()
         } catch (e: Exception) {
             Log.e(tag, "Exception during publish to [$topic]", e)
+        }
+    }
+
+    suspend fun subscribe(topic: String) = withContext(Dispatchers.IO) {
+        val activeClient = client
+        if (activeClient == null) {
+            Log.w(tag, "Cannot subscribe to [$topic]: MQTT client is null")
+            return@withContext
+        }
+
+        Log.d(tag, "Subscribing to topic [$topic]...")
+        try {
+            activeClient.subscribeWith()
+                .topicFilter(topic)
+                .qos(MqttQos.AT_LEAST_ONCE)
+                .callback { publish: Mqtt5Publish ->
+                    val message = String(publish.payloadAsBytes, StandardCharsets.UTF_8)
+                    Log.d(tag, "Received message on [$topic]: $message")
+                    _incomingMessages.tryEmit(message)
+                }
+                .send()
+                .whenComplete { _, error ->
+                    if (error != null) {
+                        Log.e(tag, "Failed to subscribe to [$topic]", error)
+                    } else {
+                        Log.d(tag, "Subscribed successfully to topic [$topic]")
+                    }
+                }
+        } catch (e: Exception) {
+            Log.e(tag, "Exception during subscribe to [$topic]", e)
         }
     }
 

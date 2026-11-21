@@ -40,7 +40,8 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
             mqttDataSource = MqttDataSource(
                 host = BuildConfig.MQTT_HOST,
                 port = BuildConfig.MQTT_PORT,
-                clientIdPrefix = "corrida-app-"
+                clientId = "corrida-app",
+                useSsl = true
             ),
             raceApiService = raceApiService
         )
