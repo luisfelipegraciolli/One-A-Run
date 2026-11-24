@@ -153,10 +153,20 @@ fun OneARunNavGraph(
 
         composable(
             route = OneARunDestinations.COUNTDOWN_ROUTE,
-        ) {
+            arguments = listOf(
+                navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType }
+            )
+        ) { entry ->
+            val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG).orEmpty()
             CountdownScreen(
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onCountdownFinished = {
+                    navActions.navigateToRace(
+                        sessionCode = sessionCode,
+                        popUpToRoute = OneARunDestinations.COUNTDOWN_ROUTE
+                    )
                 }
             )
         }
