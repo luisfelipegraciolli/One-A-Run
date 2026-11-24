@@ -27,6 +27,10 @@ val mqttPort: Int = (localProperties.getProperty("MQTT_PORT")
     ?: System.getenv("MQTT_PORT")
     ?: "1883").toIntOrNull() ?: 1883
 
+val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY")
+    ?: System.getenv("MAPS_API_KEY")
+    ?: ""
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -52,6 +56,8 @@ android {
         buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
         buildConfigField("String", "MQTT_HOST", "\"$mqttHost\"")
         buildConfigField("int", "MQTT_PORT", "$mqttPort")
+
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
@@ -102,6 +108,8 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.play.services.location)
+    implementation(libs.play.services.maps)
+    implementation(libs.maps.compose)
 
     testImplementation(libs.junit)
     testImplementation("io.mockk:mockk:1.13.12")

@@ -114,7 +114,11 @@ class OneARunNavigationActions(
 
     fun navigateToFinish(sessionCode: String){
         val uppercaseSessionCode = sessionCode.uppercase(getDefault())
-        navController.navigate("$FINISH_SCREEN/$uppercaseSessionCode")
+        navController.navigate("$FINISH_SCREEN/$uppercaseSessionCode") {
+            popUpTo(navController.graph.findStartDestination().id) {
+                inclusive = false
+            }
+        }
     }
 
     fun navigateToHome() {

@@ -1,5 +1,6 @@
 package com.shiwa.onearun.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -20,6 +21,8 @@ import com.shiwa.onearun.createrace.CreateRaceScreen
 import com.shiwa.onearun.createrace.CreateRaceViewModel
 import com.shiwa.onearun.createracewaiting.CreateRaceWaiting
 import com.shiwa.onearun.createracewaiting.CreateRaceWaitingViewModel
+import com.shiwa.onearun.finish.FinishScreen
+import com.shiwa.onearun.finish.FinishViewModel
 import com.shiwa.onearun.home.HomeScreen
 import com.shiwa.onearun.home.HomeViewModel
 import com.shiwa.onearun.joinrace.JoinRaceScreen
@@ -31,7 +34,6 @@ import com.shiwa.onearun.navigation.OneARunDestinationsArgs.SESSION_ID_ARG
 import com.shiwa.onearun.navigation.OneARunDestinationsArgs.USER_NAME_ARG
 import com.shiwa.onearun.race.RaceScreen
 import com.shiwa.onearun.race.RaceViewModel
-import com.shiwa.onearun.ui.screens.FinishScreen
 
 @Composable
 fun OneARunNavGraph(
@@ -196,9 +198,20 @@ fun OneARunNavGraph(
                 navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType },
             )
         ) {
+            val viewModel: FinishViewModel = viewModel(factory = FinishViewModel.Factory)
+            val uiState by viewModel.uiState.collectAsState()
+
+            BackHandler {
+                navActions.navigateToHome()
+            }
+
             FinishScreen(
+                uiState = uiState,
                 onNavigateHome = {
-                    navActions.navigateToHome()
+                    navActions.navigateToHome(
+
+                    )
+
                 }
             )
         }

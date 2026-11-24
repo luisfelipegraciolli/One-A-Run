@@ -12,6 +12,7 @@ import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.shiwa.onearun.OneARunApplication
 import com.shiwa.onearun.data.location.LocationDataSource
+import com.shiwa.onearun.data.repository.LocationPoint
 import com.shiwa.onearun.data.repository.RaceRepository
 import com.shiwa.onearun.data.repository.RaceStats
 import kotlinx.coroutines.Job
@@ -148,6 +149,7 @@ class RaceViewModel(
 
     private val gson = Gson()
     private val progressHistory = mutableListOf<ProgressPoint>()
+    private val routePointsList = mutableListOf<LocationPoint>()
 
     private var startTimeMillis: Long = 0L
     private var bestPaceSecPerKm: Int? = null
@@ -415,6 +417,9 @@ class RaceViewModel(
                 ?.collect { update ->
                     val state = _uiState.value
                     if (!state.isFinished && !state.sessionFinished) {
+                        synchronized(routePointsList) {
+                            routePointsList.add(LocationPoint(update.latitude, update.longitude))
+                        }
                         runCatching {
                             repository.publishLocation(sessionId, runnerId, update)
                         }
@@ -454,6 +459,7 @@ class RaceViewModel(
 
         val totalDuration = (timeProvider() - startTimeMillis).coerceAtLeast(0L)
         val currentState = _uiState.value
+        val points = synchronized(routePointsList) { routePointsList.toList() }
 
         val stats = RaceStats(
             bestPaceSecPerKm = bestPaceSecPerKm,
@@ -461,7 +467,8 @@ class RaceViewModel(
             raceDurationMillis = totalDuration,
             myDistanceMeters = currentState.myDistanceMeters,
             opponentDistanceMeters = currentState.opponentDistanceMeters,
-            won = wonValue
+            won = wonValue,
+            routePoints = points
         )
 
         repository.updateRaceStats(stats)

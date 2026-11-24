@@ -28,13 +28,19 @@ data class RaceSessionState(
     val details: RaceDetailsResponse? = null
 )
 
+data class LocationPoint(
+    val latitude: Double,
+    val longitude: Double
+)
+
 data class RaceStats(
     val bestPaceSecPerKm: Int? = null,
     val myFinishMillis: Long? = null,
     val raceDurationMillis: Long? = null,
     val myDistanceMeters: Double = 0.0,
     val opponentDistanceMeters: Double = 0.0,
-    val won: Boolean? = null
+    val won: Boolean? = null,
+    val routePoints: List<LocationPoint> = emptyList()
 )
 
 interface RaceRepository {

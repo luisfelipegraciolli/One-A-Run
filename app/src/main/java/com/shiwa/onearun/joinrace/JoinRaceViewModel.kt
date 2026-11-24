@@ -35,7 +35,7 @@ class JoinRaceViewModel(
     }
 
     fun onJoinCodeChanged(code: String) {
-        _uiState.update { it.copy(joinCode = code, errorMessage = null) }
+        _uiState.update { it.copy(joinCode = code.uppercase(), errorMessage = null) }
     }
 
     fun joinRace(onSuccess: (sessionId: String) -> Unit = { _ -> }) {
@@ -57,7 +57,7 @@ class JoinRaceViewModel(
 
             val result = repository.joinRaceSession(
                 guestRunnerName = currentState.guestRunnerName.trim(),
-                joinCode = currentState.joinCode.trim()
+                joinCode = currentState.joinCode.trim().uppercase()
             )
 
             if (result.isSuccess) {
