@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+.idea/deviceHardwareInput.xml
+app/release/
+app/src/main/res/values-v23/
