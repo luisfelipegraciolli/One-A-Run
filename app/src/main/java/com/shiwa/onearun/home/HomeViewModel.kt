@@ -22,13 +22,19 @@ class HomeViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    fun checkLocationPermission(context: Context) {
-        val hasPermission = ContextCompat.checkSelfPermission(
+    fun checkLocationPermission(context: Context): Boolean {
+        val hasFine = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
 
+        val hasPermission = hasFine || hasCoarse
         _uiState.update { it.copy(locationPermissionGranted = hasPermission) }
+        return hasPermission
     }
 
     fun onPermissionResult(isGranted: Boolean) {

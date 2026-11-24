@@ -16,8 +16,8 @@ import kotlinx.coroutines.launch
 data class CreateRaceUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val hostName: String = "João",
-    val distanceInput: String = "400m",
+    val hostName: String = "",
+    val distanceInput: String = "",
     val isCreated: Boolean = false,
     val joinCode: String = "",
     val sessionId: String = "",
@@ -32,28 +32,38 @@ class CreateRaceViewModel(
     val uiState: StateFlow<CreateRaceUiState> = _uiState.asStateFlow()
 
     fun onHostNameChanged(name: String) {
-        _uiState.update { it.copy(hostName = name) }
+        _uiState.update { it.copy(hostName = name, errorMessage = null) }
     }
 
     fun onDistanceChanged(distance: String) {
-        _uiState.update { it.copy(distanceInput = distance) }
+        _uiState.update { it.copy(distanceInput = distance, errorMessage = null) }
     }
 
     fun createRace(onSuccess: (sessionId: String, joinCode: String, hostName: String, distance: String) -> Unit = { _, _, _, _ -> }) {
         val currentState = _uiState.value
-        val numericDistance = currentState.distanceInput.replace(Regex("[^0-9]"), "").toIntOrNull() ?: 400
+
+        if (currentState.hostName.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Por favor, preencha o seu nome.") }
+            return
+        }
+
+        val numericDistance = currentState.distanceInput.replace(Regex("[^0-9]"), "").toIntOrNull()
+        if (numericDistance == null || numericDistance !in 100..1000) {
+            _uiState.update { it.copy(errorMessage = "A distância para criação deve ser de 100m a 1000m.") }
+            return
+        }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val result = repository.createRaceSession(
                 distanceInMeters = numericDistance,
-                hostRunnerName = currentState.hostName
+                hostRunnerName = currentState.hostName.trim()
             )
             if (result.isSuccess) {
                 val response = result.getOrNull()
                 val code = response?.joinCode ?: ""
                 val session = response?.sessionId ?: ""
-                val hostName = response?.hostRunnerName ?: ""
+                val hostName = response?.hostRunnerName ?: currentState.hostName
 
                 _uiState.update {
                     it.copy(
@@ -63,7 +73,7 @@ class CreateRaceViewModel(
                         sessionId = session
                     )
                 }
-                onSuccess(session, code, hostName, currentState.distanceInput)
+                onSuccess(session, code, hostName, "${numericDistance}m")
             } else {
                 _uiState.update {
                     it.copy(

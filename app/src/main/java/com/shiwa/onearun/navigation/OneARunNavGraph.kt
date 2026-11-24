@@ -1,5 +1,6 @@
 package com.shiwa.onearun.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -20,6 +21,8 @@ import com.shiwa.onearun.createrace.CreateRaceScreen
 import com.shiwa.onearun.createrace.CreateRaceViewModel
 import com.shiwa.onearun.createracewaiting.CreateRaceWaiting
 import com.shiwa.onearun.createracewaiting.CreateRaceWaitingViewModel
+import com.shiwa.onearun.finish.FinishScreen
+import com.shiwa.onearun.finish.FinishViewModel
 import com.shiwa.onearun.home.HomeScreen
 import com.shiwa.onearun.home.HomeViewModel
 import com.shiwa.onearun.joinrace.JoinRaceScreen
@@ -31,7 +34,6 @@ import com.shiwa.onearun.navigation.OneARunDestinationsArgs.SESSION_ID_ARG
 import com.shiwa.onearun.navigation.OneARunDestinationsArgs.USER_NAME_ARG
 import com.shiwa.onearun.race.RaceScreen
 import com.shiwa.onearun.race.RaceViewModel
-import com.shiwa.onearun.ui.screens.FinishScreen
 
 @Composable
 fun OneARunNavGraph(
@@ -83,7 +85,6 @@ fun OneARunNavGraph(
                 navArgument(name = DISTANCE_ARG) { type = NavType.StringType; defaultValue = "" }
             )
         ) { entry ->
-            val sessionId = entry.arguments?.getString(SESSION_ID_ARG).orEmpty()
             val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG).orEmpty()
             val userName = entry.arguments?.getString(USER_NAME_ARG).orEmpty()
             val distance = entry.arguments?.getString(DISTANCE_ARG).orEmpty()
@@ -95,8 +96,9 @@ fun OneARunNavGraph(
             CreateRaceWaiting(
                 guestJoined = uiState.guestJoined,
                 onGuestJoined = {
-                    navActions.navigateToLobby(
-                        sessionId = sessionId,
+                    // Mudar isso para navegar para lobby, isso só está sendo feito para testes
+                    navActions.navigateToRace(
+                        sessionCode = sessionCode,
                         popUpToRoute = OneARunDestinations.CREATE_RACE_WAITING_ROUTE
                     )
                 },
@@ -117,8 +119,8 @@ fun OneARunNavGraph(
 
             LaunchedEffect(uiState.isJoined) {
                 if (uiState.isJoined) {
-                    navActions.navigateToLobby(
-                        sessionId = uiState.sessionId,
+                    navActions.navigateToRace(
+                        sessionCode = uiState.joinCode,
                         popUpToRoute = OneARunDestinations.JOIN_RACE_ROUTE
                     )
                 }
@@ -129,8 +131,8 @@ fun OneARunNavGraph(
                     navController.popBackStack()
                 },
                 onNavigateToLobby = {
-                    navActions.navigateToLobby(
-                        sessionId = uiState.sessionId,
+                    navActions.navigateToRace(
+                        sessionCode = uiState.joinCode,
                         popUpToRoute = OneARunDestinations.JOIN_RACE_ROUTE
                     )
                 },
@@ -153,10 +155,20 @@ fun OneARunNavGraph(
 
         composable(
             route = OneARunDestinations.COUNTDOWN_ROUTE,
-        ) {
+            arguments = listOf(
+                navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType }
+            )
+        ) { entry ->
+            val sessionCode = entry.arguments?.getString(SESSION_CODE_ARG).orEmpty()
             CountdownScreen(
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onCountdownFinished = {
+                    navActions.navigateToRace(
+                        sessionCode = sessionCode,
+                        popUpToRoute = OneARunDestinations.COUNTDOWN_ROUTE
+                    )
                 }
             )
         }
@@ -186,9 +198,20 @@ fun OneARunNavGraph(
                 navArgument(name = SESSION_CODE_ARG) { type = NavType.StringType },
             )
         ) {
+            val viewModel: FinishViewModel = viewModel(factory = FinishViewModel.Factory)
+            val uiState by viewModel.uiState.collectAsState()
+
+            BackHandler {
+                navActions.navigateToHome()
+            }
+
             FinishScreen(
+                uiState = uiState,
                 onNavigateHome = {
-                    navActions.navigateToHome()
+                    navActions.navigateToHome(
+
+                    )
+
                 }
             )
         }

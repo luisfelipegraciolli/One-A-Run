@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -24,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -98,6 +100,7 @@ fun JoinRaceContent(
                     OutlinedTextField(
                         value = uiState.guestRunnerName,
                         onValueChange = onUserNameChanged,
+                        placeholder = { Text("Seu nome") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
@@ -123,8 +126,10 @@ fun JoinRaceContent(
                     OutlinedTextField(
                         value = uiState.joinCode,
                         onValueChange = onCodeChanged,
+                        placeholder = { Text("Ex: AB12CD") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,

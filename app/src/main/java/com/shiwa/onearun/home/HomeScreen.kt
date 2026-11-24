@@ -49,17 +49,24 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         viewModel.onPermissionResult(isGranted)
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.checkLocationPermission(context)
-                if (!uiState.locationPermissionGranted) {
-                    permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                val hasPermission = viewModel.checkLocationPermission(context)
+                if (!hasPermission) {
+                    permissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
                 }
             }
         }

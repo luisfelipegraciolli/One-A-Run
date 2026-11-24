@@ -1,16 +1,18 @@
 package com.shiwa.onearun.race
 
-import android.annotation.SuppressLint
 import android.os.SystemClock
 import android.util.Log
+import androidx.annotation.Keep
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import com.shiwa.onearun.OneARunApplication
 import com.shiwa.onearun.data.location.LocationDataSource
+import com.shiwa.onearun.data.repository.LocationPoint
 import com.shiwa.onearun.data.repository.RaceRepository
 import com.shiwa.onearun.data.repository.RaceStats
 import kotlinx.coroutines.Job
@@ -40,36 +42,39 @@ data class RaceUiState(
     val errorMessage: String? = null
 )
 
+@Keep
 data class ProgressPoint(
-    val distanceMeters: Double,
-    val timestampMillis: Long
+    @SerializedName("distanceMeters") val distanceMeters: Double,
+    @SerializedName("timestampMillis") val timestampMillis: Long
 )
 
+@Keep
 data class MqttProgressDto(
-    val sessionId: String? = null,
-    val runnerId: String? = null,
-    val distanceMeters: Double = 0.0,
-    val opponentRunnerId: String? = null,
-    val opponentDistanceMeters: Double = 0.0,
-    val targetDistanceMeters: Double = 400.0,
-    val remainingMeters: Double? = null,
-    val opponentRemainingMeters: Double? = null,
-    val finished: Boolean = false,
-    val opponentFinished: Boolean = false,
-    val sessionStatus: String? = null,
-    val winnerRunnerId: String? = null,
-    val won: Boolean? = null
+    @SerializedName("sessionId") val sessionId: String? = null,
+    @SerializedName("runnerId") val runnerId: String? = null,
+    @SerializedName("distanceMeters") val distanceMeters: Double = 0.0,
+    @SerializedName("opponentRunnerId") val opponentRunnerId: String? = null,
+    @SerializedName("opponentDistanceMeters") val opponentDistanceMeters: Double = 0.0,
+    @SerializedName("targetDistanceMeters") val targetDistanceMeters: Double = 400.0,
+    @SerializedName("remainingMeters") val remainingMeters: Double? = null,
+    @SerializedName("opponentRemainingMeters") val opponentRemainingMeters: Double? = null,
+    @SerializedName("finished") val finished: Boolean = false,
+    @SerializedName("opponentFinished") val opponentFinished: Boolean = false,
+    @SerializedName("sessionStatus") val sessionStatus: String? = null,
+    @SerializedName("winnerRunnerId") val winnerRunnerId: String? = null,
+    @SerializedName("won") val won: Boolean? = null
 )
 
+@Keep
 data class MqttResultDto(
-    val sessionId: String? = null,
-    val sessionStatus: String? = null,
-    val targetDistanceMeters: Double? = null,
-    val winnerRunnerId: String? = null,
-    val hostRunnerId: String? = null,
-    val hostDistanceMeters: Double? = null,
-    val guestRunnerId: String? = null,
-    val guestDistanceMeters: Double? = null
+    @SerializedName("sessionId") val sessionId: String? = null,
+    @SerializedName("sessionStatus") val sessionStatus: String? = null,
+    @SerializedName("targetDistanceMeters") val targetDistanceMeters: Double? = null,
+    @SerializedName("winnerRunnerId") val winnerRunnerId: String? = null,
+    @SerializedName("hostRunnerId") val hostRunnerId: String? = null,
+    @SerializedName("hostDistanceMeters") val hostDistanceMeters: Double? = null,
+    @SerializedName("guestRunnerId") val guestRunnerId: String? = null,
+    @SerializedName("guestDistanceMeters") val guestDistanceMeters: Double? = null
 )
 
 object RaceUtils {
@@ -144,6 +149,7 @@ class RaceViewModel(
 
     private val gson = Gson()
     private val progressHistory = mutableListOf<ProgressPoint>()
+    private val routePointsList = mutableListOf<LocationPoint>()
 
     private var startTimeMillis: Long = 0L
     private var bestPaceSecPerKm: Int? = null
@@ -173,9 +179,16 @@ class RaceViewModel(
     private fun startRaceSession(sessionId: String, runnerId: String) {
         fetchRunnerNames(sessionId, runnerId)
         startTimer()
-        startLocationTracking()
+        viewModelScope.launch {
+            try {
+                repository.connectToBroker()
+            } catch (e: Exception) {
+                Log.w(TAG, "Falha ao conectar MQTT no início da corrida", e)
+            }
+        }
         observeProgress(sessionId, runnerId)
         observeResult(sessionId, runnerId)
+        startLocationTracking()
     }
 
     private fun fetchRunnerNames(sessionId: String, runnerId: String) {
@@ -190,9 +203,12 @@ class RaceViewModel(
                 val opponentName =
                     if (!rawOpponentName.isNullOrBlank()) rawOpponentName else "Adversário"
 
-                _uiState.update {
-                    it.copy(
+                val targetDistance = details.distanceMeters.toDouble()
+
+                _uiState.update { current ->
+                    current.copy(
                         myName = myName,
+                        targetDistanceMeters = targetDistance,
                         opponentName = opponentName
                     )
                 }
@@ -206,7 +222,7 @@ class RaceViewModel(
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
             while (!_uiState.value.sessionFinished) {
-                val elapsed = (timeProvider() - startTimeMillis).coerceAtLeast(0L)
+                val elapsed = myFinishMillis ?: (timeProvider() - startTimeMillis).coerceAtLeast(0L)
                 val timeStr = RaceUtils.formatTime(elapsed)
                 _uiState.update { it.copy(timeText = timeStr) }
                 delay(500.milliseconds)
@@ -216,13 +232,28 @@ class RaceViewModel(
 
     private fun observeProgress(sessionId: String, runnerId: String) {
         progressJob?.cancel()
+
         progressJob = viewModelScope.launch {
             val topic = "race/$sessionId/runner/$runnerId/progress"
-            repository.observeTopic(topic)
-                .catch { Log.w(TAG, "Erro ao assinar progresso da corrida", it) }
-                .collect { json ->
-                    handleProgressMessage(json, runnerId)
+
+            var retryDelay = 1_000L
+
+            while (!_uiState.value.sessionFinished) {
+                try {
+                    repository.observeTopic(topic).collect { json ->
+                        retryDelay = 1_000L
+                        handleProgressMessage(json, runnerId)
+                    }
+
+                    Log.w(TAG, "Fluxo MQTT encerrado: $topic")
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Erro no fluxo MQTT: $topic", e)
                 }
+
+                delay(retryDelay)
+                retryDelay = (retryDelay * 2).coerceAtMost(30_000L)
+            }
         }
     }
 
@@ -230,11 +261,45 @@ class RaceViewModel(
         resultJob?.cancel()
         resultJob = viewModelScope.launch {
             val topic = "race/$sessionId/result"
-            repository.observeTopic(topic)
-                .catch { Log.w(TAG, "Erro ao assinar resultado da corrida", it) }
-                .collect { json ->
-                    handleResultMessage(json, runnerId)
+            var retryDelay = 1_000L
+
+            while (!_uiState.value.sessionFinished) {
+                try {
+                    repository.observeTopic(topic).collect { json ->
+                        retryDelay = 1_000L
+                        handleResultMessage(json, runnerId)
+                    }
+                } catch (e: Exception) {
+                    Log.w(
+                        TAG,
+                        "Erro/queda ao assinar resultado da corrida, tentando novamente...",
+                        e
+                    )
                 }
+
+                if (_uiState.value.sessionFinished) break
+
+                // Fallback via HTTP caso o resultado tenha sido publicado enquanto o MQTT estava offline
+                syncSessionStateFallback(sessionId, runnerId)
+
+                delay(retryDelay)
+                retryDelay = (retryDelay * 2).coerceAtMost(15_000L)
+            }
+        }
+    }
+
+    private suspend fun syncSessionStateFallback(sessionId: String, runnerId: String) {
+        repository.getRaceSession(sessionId).onSuccess { details ->
+            if (details.status == "FINISHED") {
+                val wonValue = details.winnerRunnerId?.let { it == runnerId }
+                _uiState.update {
+                    it.copy(
+                        sessionFinished = true,
+                        isWaitingOpponentToFinish = false
+                    )
+                }
+                finishRace(wonValue)
+            }
         }
     }
 
@@ -243,9 +308,14 @@ class RaceViewModel(
             val dto = gson.fromJson(json, MqttProgressDto::class.java) ?: return
             val now = timeProvider()
 
-            progressHistory.add(ProgressPoint(dto.distanceMeters, now))
+            val historyCopy: List<ProgressPoint>
+            synchronized(progressHistory) {
+                progressHistory.add(ProgressPoint(dto.distanceMeters, now))
+                progressHistory.removeAll { it.timestampMillis < now - 60_000L }
+                historyCopy = progressHistory.toList()
+            }
 
-            val currentPaceSecPerKm = RaceUtils.calculatePace(progressHistory, now)
+            val currentPaceSecPerKm = RaceUtils.calculatePace(historyCopy, now)
             if (currentPaceSecPerKm != null) {
                 val prevBest = bestPaceSecPerKm
                 if (prevBest == null || currentPaceSecPerKm < prevBest) {
@@ -256,7 +326,7 @@ class RaceViewModel(
 
             val finishedNow = dto.finished
             if (finishedNow && myFinishMillis == null) {
-                myFinishMillis = now - startTimeMillis
+                myFinishMillis = (now - startTimeMillis).coerceAtLeast(0L)
             }
 
             val sessionIsFinished = (dto.sessionStatus == "FINISHED")
@@ -302,13 +372,23 @@ class RaceViewModel(
             val sessionIsFinished = (dto.sessionStatus == "FINISHED")
 
             _uiState.update { current ->
+                val isHost = (runnerId == dto.hostRunnerId)
+                val finalMyDist = if (isHost) dto.hostDistanceMeters else dto.guestDistanceMeters
+                val finalOppDist = if (isHost) dto.guestDistanceMeters else dto.hostDistanceMeters
+
+                val myDist = finalMyDist ?: current.myDistanceMeters
+                val oppDist = finalOppDist ?: current.opponentDistanceMeters
+
                 val isFirst = RaceUtils.calculateIsFirstPlace(
-                    current.myDistanceMeters,
-                    current.opponentDistanceMeters,
+                    myDist,
+                    oppDist,
                     wonValue,
                     dto.winnerRunnerId
                 )
                 current.copy(
+                    myDistanceMeters = myDist,
+                    opponentDistanceMeters = oppDist,
+                    targetDistanceMeters = dto.targetDistanceMeters ?: current.targetDistanceMeters,
                     isFirstPlace = isFirst,
                     sessionFinished = sessionIsFinished,
                     isWaitingOpponentToFinish = current.isFinished && !sessionIsFinished
@@ -337,7 +417,12 @@ class RaceViewModel(
                 ?.collect { update ->
                     val state = _uiState.value
                     if (!state.isFinished && !state.sessionFinished) {
-                        repository.publishLocation(sessionId, runnerId, update)
+                        synchronized(routePointsList) {
+                            routePointsList.add(LocationPoint(update.latitude, update.longitude))
+                        }
+                        runCatching {
+                            repository.publishLocation(sessionId, runnerId, update)
+                        }
                     } else {
                         stopLocationTracking()
                     }
@@ -350,21 +435,31 @@ class RaceViewModel(
         locationJob = null
     }
 
-    @SuppressLint("EmptySuperCall")
     override fun onCleared() {
-        super.onCleared()
         stopLocationTracking()
+        timerJob?.cancel()
+        progressJob?.cancel()
+        resultJob?.cancel()
     }
 
     private fun finishRace(wonValue: Boolean?) {
-        if (isRaceFinishedRecorded) return
+        if (isRaceFinishedRecorded) {
+            if (wonValue != null && repository.raceStats.value?.won == null) {
+                val currentStats = repository.raceStats.value
+                if (currentStats != null) {
+                    repository.updateRaceStats(currentStats.copy(won = wonValue))
+                }
+            }
+            return
+        }
         isRaceFinishedRecorded = true
 
         timerJob?.cancel()
         stopLocationTracking()
 
-        val totalDuration = timeProvider() - startTimeMillis
+        val totalDuration = (timeProvider() - startTimeMillis).coerceAtLeast(0L)
         val currentState = _uiState.value
+        val points = synchronized(routePointsList) { routePointsList.toList() }
 
         val stats = RaceStats(
             bestPaceSecPerKm = bestPaceSecPerKm,
@@ -372,7 +467,8 @@ class RaceViewModel(
             raceDurationMillis = totalDuration,
             myDistanceMeters = currentState.myDistanceMeters,
             opponentDistanceMeters = currentState.opponentDistanceMeters,
-            won = wonValue
+            won = wonValue,
+            routePoints = points
         )
 
         repository.updateRaceStats(stats)

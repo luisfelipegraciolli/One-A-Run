@@ -28,13 +28,19 @@ data class RaceSessionState(
     val details: RaceDetailsResponse? = null
 )
 
+data class LocationPoint(
+    val latitude: Double,
+    val longitude: Double
+)
+
 data class RaceStats(
     val bestPaceSecPerKm: Int? = null,
     val myFinishMillis: Long? = null,
     val raceDurationMillis: Long? = null,
     val myDistanceMeters: Double = 0.0,
     val opponentDistanceMeters: Double = 0.0,
-    val won: Boolean? = null
+    val won: Boolean? = null,
+    val routePoints: List<LocationPoint> = emptyList()
 )
 
 interface RaceRepository {
@@ -91,6 +97,7 @@ class RaceRepositoryImpl(
         runnerId: String,
         update: LocationUpdate
     ) {
+        if (sessionId.isBlank() || runnerId.isBlank()) return
         val topic = "race/$sessionId/runner/$runnerId/location"
         val payload = gson.toJson(update)
         mqttDataSource.publishQos0(topic, payload)
@@ -118,7 +125,9 @@ class RaceRepositoryImpl(
 
     override suspend fun createRaceApi(race: RaceDto): Result<RaceDto> {
         return runCatching {
-            raceApiService?.createRace(race) ?: race
+            val service =
+                raceApiService ?: throw IllegalStateException("RaceApiService não inicializado")
+            service.createRace(race)
         }
     }
 
@@ -151,11 +160,17 @@ class RaceRepositoryImpl(
             val service = raceApiService ?: throw IllegalStateException("RaceApiService não inicializado")
             val response = service.getRaceSession(sessionId)
             _currentSession.update { current ->
+                val currentRunnerId = current?.runnerId
+                val effectiveRunnerId = when {
+                    currentRunnerId != null -> currentRunnerId
+                    else -> null
+                }
                 (current ?: RaceSessionState()).copy(
                     sessionId = response.id,
                     joinCode = response.joinCode,
                     hostRunnerId = response.hostRunnerId,
                     guestRunnerId = response.guestRunnerId,
+                    runnerId = effectiveRunnerId,
                     distanceMeters = response.distanceMeters,
                     status = response.status,
                     details = response
