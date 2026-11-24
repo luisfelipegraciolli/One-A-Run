@@ -16,3 +16,4 @@ local.properties
 .idea/deviceHardwareInput.xml
 app/release/
 app/src/main/res/values-v23/
+.idea/
